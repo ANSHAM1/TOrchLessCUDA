@@ -1,5 +1,5 @@
-#include "Cnn.h"
-#include "ImgIncoder.h"
+#include "Includes/Cnn.h"
+#include "Images/ImgIncoder.h"
 
 #include <vector>
 #include <random>
