@@ -6,7 +6,7 @@
 #include <random>
 #include <functional>
 
-#include "BatchDevice.cuh"
+#include "../Cuda/BatchDevice.cuh"
 using namespace std;
 
 struct BatchWrapper {
