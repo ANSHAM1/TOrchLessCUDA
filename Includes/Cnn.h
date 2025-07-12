@@ -9,7 +9,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include "KernelWrappers.cuh"
+#include "../Cuda/KernelWrappers.cuh"
 #include "Batch.h"
 using namespace std;
 
