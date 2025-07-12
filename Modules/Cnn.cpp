@@ -1,4 +1,4 @@
-﻿#include "CNN.h"
+#include "../Includes/Cnn.h"
 
 Conv2dLayer::Conv2dLayer(shared_ptr<BatchWrapper>& BWi, int Cout, int Cin, int kH, int kW, int s, int p)
 	: S(s), P(p) {
