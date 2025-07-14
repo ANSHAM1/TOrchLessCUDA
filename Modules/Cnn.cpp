@@ -21,22 +21,24 @@ void Conv2dLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 	Convo2DKernelForwardWrapper(BWout->deviceRaw_Ptr, BWi->deviceRaw_Ptr,
 		BWk->deviceRaw_Ptr, S, P, blocks, threads);
 
-	BWout->backward = [BWi, this](float lr, float r2, float gradclip) {
-		int size = BWi->SIZE;
+	auto rawBWi = BWi.get(); auto rawBWout = BWout.get(); auto rawBWk = BWk.get();
+	int s = S, p = P;
+	BWout->backward = [rawBWi, rawBWout, rawBWk, s, p](float lr, float r2, float gradclip) {
+		int size = rawBWi->SIZE;
 		int threads = 256;
 		int blocks = (size + threads - 1) / threads;
 
-		Convo2DKernelBackwardWrapper(BWi->deviceRaw_Ptr, this->BWout->deviceRaw_Ptr,
-			this->BWk->deviceRaw_Ptr, this->S, this->P, r2, gradclip, blocks, threads);
+		Convo2DKernelBackwardWrapper(rawBWi->deviceRaw_Ptr, rawBWout->deviceRaw_Ptr,
+			rawBWk->deviceRaw_Ptr, s, p, r2, gradclip, blocks, threads);
 
-		int blocksK = (this->BWk->SIZE + threads - 1) / threads;
-		kernelsUpdateWrapper(this->BWk->deviceRaw_Ptr, lr, blocksK, threads);
+		int blocksK = (rawBWk->SIZE + threads - 1) / threads;
+		kernelsUpdateWrapper(rawBWk->deviceRaw_Ptr, lr, blocksK, threads);
 
-		if(BWi->backward) BWi->backward(lr, r2, gradclip);
+		if(rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		BWk->resetGrad();
-		BWout->resetData();
-		BWout->resetGrad();
+		rawBWk->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
 }
 
@@ -54,14 +56,16 @@ void ActivationLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 	int blocks = (size + threads - 1) / threads;
 	ActivationKernelForwardWrapper(BWout->deviceRaw_Ptr, BWi->deviceRaw_Ptr, TYPE, blocks, threads);
 
-	BWout->backward = [BWi, this, blocks, threads](float lr, float r2, float gradclip) {
-		ActivationKernelBackwardWrapper(BWi->deviceRaw_Ptr,
-			this->BWout->deviceRaw_Ptr, this->TYPE, blocks, threads);
+	auto rawBWi = BWi.get(); auto rawBWout = BWout.get();
+	string Type = this->TYPE;
+	BWout->backward = [rawBWi, rawBWout, Type, blocks, threads](float lr, float r2, float gradclip) {
+		ActivationKernelBackwardWrapper(rawBWi->deviceRaw_Ptr,
+			rawBWout->deviceRaw_Ptr, Type, blocks, threads);
 
-		if (BWi->backward) BWi->backward(lr, r2, gradclip);
+		if (rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		BWout->resetData();
-		BWout->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
 }
 
@@ -83,17 +87,20 @@ void PoolingLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 	PoolingKernelForwardWrapper(BWout->deviceRaw_Ptr, BWi->deviceRaw_Ptr, TYPE,
 		kH, kW, S, P, blocks, threads);
 
-	BWout->backward = [BWi, this](float lr, float r2, float gradclip) {
-		int size = BWi->SIZE;
+	auto rawBWi = BWi.get(); auto rawBWout = BWout.get();
+	int kh = kH, kw = kW, s = S, p = P;
+	string Type = this->TYPE;
+	BWout->backward = [rawBWi, rawBWout, Type, kh, kw, s, p](float lr, float r2, float gradclip) {
+		int size = rawBWi->SIZE;
 		int threads = 256;
 		int blocks = (size + threads - 1) / threads;
-		PoolingKernelBackwardWrapper(BWi->deviceRaw_Ptr, BWout->deviceRaw_Ptr, this->TYPE,
-			this->kH, this->kW, this->S, this->P, blocks, threads);
+		PoolingKernelBackwardWrapper(rawBWi->deviceRaw_Ptr, rawBWout->deviceRaw_Ptr, Type,
+			kh, kw, s, p, blocks, threads);
 
-		if (BWi->backward) BWi->backward(lr, r2, gradclip);
+		if (rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		BWout->resetData();
-		BWout->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
 }
 
@@ -127,26 +134,31 @@ void BatchNormLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 		GAMMA->deviceRaw_Ptr, BETA->deviceRaw_Ptr,
 		BWi->SIZE, sizePerChannel, BWi->CHANNELs, blocks, threads, blocksCH, threadsCH);
 
-	BWout->backward = [=](float lr, float r2, float gradclip) {
-		int blocksCH = (BWi->CHANNELs + threads - 1) / threads;
+	auto rawBWi = BWi.get(); auto rawBWout = BWout.get();
+	auto rawGAMMA = GAMMA.get(); auto rawBETA = BETA.get();
+	BWout->backward = [rawBWi, rawBWout, rawGAMMA, rawBETA, 
+		mean, var, sumDy, sumDyXmu, sizePerChannel](float lr, float r2, float gradclip) {
 
-		BatchNormKernelBackwardWrapper(BWi->deviceRaw_Ptr, this->BWout->deviceRaw_Ptr, mean, var,
-			sumDy, sumDyXmu, GAMMA->deviceRaw_Ptr, BETA->deviceRaw_Ptr,
-			BWi->SIZE, sizePerChannel, BWi->CHANNELs, r2, gradclip, blocks, threads);
+		int threads = 256;
+		int blocks = (sizePerChannel + threads - 1) / threads;
+		int blocksCH = (rawBWi->CHANNELs + threads - 1) / threads;
 
+		BatchNormKernelBackwardWrapper(rawBWi->deviceRaw_Ptr, rawBWout->deviceRaw_Ptr, mean, var,
+			sumDy, sumDyXmu, rawGAMMA->deviceRaw_Ptr, rawBETA->deviceRaw_Ptr,
+			rawBWi->SIZE, sizePerChannel, rawBWi->CHANNELs, r2, gradclip, blocks, threads);
 
 		cudaCheck(cudaFree(mean)); cudaCheck(cudaFree(var));
 		cudaCheck(cudaFree(sumDy)); cudaCheck(cudaFree(sumDyXmu));
 
-		int blocksGB = (this->GAMMA->SIZE + threads - 1) / threads;
-		gammabetaUpdateWrapper(GAMMA->deviceRaw_Ptr, BETA->deviceRaw_Ptr, lr, blocksGB, threads);
+		int blocksGB = (rawGAMMA->SIZE + threads - 1) / threads;
+		gammabetaUpdateWrapper(rawGAMMA->deviceRaw_Ptr, rawBETA->deviceRaw_Ptr, lr, blocksGB, threads);
 
-		if (BWi->backward) BWi->backward(lr, r2, gradclip);
+		if (rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		GAMMA->resetGrad();
-		BETA->resetGrad();
-		BWout->resetData();
-		BWout->resetGrad();
+		rawGAMMA->resetGrad();
+		rawBETA->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
 }
 
@@ -167,17 +179,19 @@ void DropoutLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 
 	DropoutKernelForwardWrapper(BWout->deviceRaw_Ptr, BWi->deviceRaw_Ptr, BWmask->deviceRaw_Ptr, Prob, BWi->SIZE, d_states, blocks, threads);
 
-	BWout->backward = [BWi, this](float lr, float r2, float gradclip) {
-		int size = this->BWout->SIZE;
+	auto rawBWi = BWi.get(); auto rawBWout = BWi.get(); 
+	auto rawBWmask = BWmask.get(); float P = this->Prob;
+	BWout->backward = [rawBWi, rawBWout, rawBWmask, P](float lr, float r2, float gradclip) {
+		int size = rawBWout->SIZE;
 		int threads = 256;
 		int blocks = (size + threads - 1) / threads;
-		DropoutKernelBackwardWrapper(BWi->deviceRaw_Ptr, this->BWout->deviceRaw_Ptr, 
-			this->BWmask->deviceRaw_Ptr, this->Prob, blocks, threads);
+		DropoutKernelBackwardWrapper(rawBWi->deviceRaw_Ptr, rawBWout->deviceRaw_Ptr, 
+			rawBWmask->deviceRaw_Ptr, P, blocks, threads);
 
-		if (BWi->backward) BWi->backward(lr, r2, gradclip);
+		if (rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		BWout->resetData();
-		BWout->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
 
 	cudaCheck(cudaFree(d_states));
@@ -201,29 +215,30 @@ void DenseLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 	DenseKernelForwardWrapper(BWout->deviceRaw_Ptr, BWi->deviceRaw_Ptr, WEIGHTS->deviceRaw_Ptr, 
 		BIAS->deviceRaw_Ptr, blocks, threads);
 
-	BWout->backward = [BWi, this](float lr, float r2, float gradclip) {
-		int batch = BWi->BATCHs;
-		int out_features = BWout->WIDTHs;
+	auto rawBWi = BWi.get(); auto rawBWout = BWout.get();
+	auto rawWEIGHTS = WEIGHTS.get(); auto rawBIAS = BIAS.get();
+	BWout->backward = [rawBWi, rawBWout, rawWEIGHTS, rawBIAS](float lr, float r2, float gradclip) {
+		int batch = rawBWi->BATCHs;
+		int out_features = rawBWout->WIDTHs;
 		int total = batch * out_features;
 
 		int threads = 256;
 		int blocks = (total + threads - 1) / threads;
-		DenseKernelBackwardWrapper(BWi->deviceRaw_Ptr, this->BWout->deviceRaw_Ptr, 
-			this->WEIGHTS->deviceRaw_Ptr, this->BIAS->deviceRaw_Ptr, r2, gradclip, blocks, threads);
+		DenseKernelBackwardWrapper(rawBWi->deviceRaw_Ptr, rawBWout->deviceRaw_Ptr, 
+			rawWEIGHTS->deviceRaw_Ptr, rawBIAS->deviceRaw_Ptr, r2, gradclip, blocks, threads);
 
-		int blocksW = (this->WEIGHTS->SIZE + threads - 1) / threads;
-		int blocksB = (this->BIAS->SIZE + threads - 1) / threads;
-		weightbiasUpdateWrapper(this->WEIGHTS->deviceRaw_Ptr, this->BIAS->deviceRaw_Ptr,
+		int blocksW = (rawWEIGHTS->SIZE + threads - 1) / threads;
+		int blocksB = (rawBIAS->SIZE + threads - 1) / threads;
+		weightbiasUpdateWrapper(rawWEIGHTS->deviceRaw_Ptr, rawBIAS->deviceRaw_Ptr,
 			0.001f, blocksW, threads, blocksB, threads);
 
-		if (BWi->backward) BWi->backward(lr, r2, gradclip);
+		if (rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		WEIGHTS->resetGrad();
-		BIAS->resetGrad();
-		BWout->resetData();
-		BWout->resetGrad();
+		rawWEIGHTS->resetGrad();
+		rawBIAS->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
-
 }
 
 
@@ -239,16 +254,18 @@ void OutputLayer::forward(shared_ptr<BatchWrapper>& BWi) {
 
 	OutputKernelWrapper(BWout->deviceRaw_Ptr, BWi->deviceRaw_Ptr, LABELS->deviceRaw_Ptr, blocks, threads);
 	
-	BWout->backward = [BWi, BWout = this->BWout](float lr, float r2, float gradclip) {
-		int size = BWout->SIZE;
+	auto rawBWout = BWout.get();
+	auto rawBWi = BWi.get();
+	BWout->backward = [rawBWi, rawBWout](float lr, float r2, float gradclip) {
+		int size = rawBWout->SIZE;
 		int threads = 256;
 		int blocks = (size + threads - 1) / threads;
-		CopyGradWrapper(BWi->deviceRaw_Ptr, BWout->deviceRaw_Ptr, blocks, threads);
+		CopyGradWrapper(rawBWi->deviceRaw_Ptr, rawBWout->deviceRaw_Ptr, blocks, threads);
 
-		if (BWi->backward) BWi->backward(lr, r2, gradclip);
+		if (rawBWi->backward) rawBWi->backward(lr, r2, gradclip);
 
-		BWout->resetData();
-		BWout->resetGrad();
+		rawBWout->resetData();
+		rawBWout->resetGrad();
 		};
 }
 
@@ -332,11 +349,7 @@ shared_ptr<OutputLayer> Network::OutputprivateLayer(const vector<vector<vector<v
 	if (BWs.empty()) throw runtime_error("No input layer found");
 
 	shared_ptr<BatchWrapper> BWi = BWs.back();
-	int B = miniBatch.size();
-	int C = miniBatch[0][0][0].size();
-
 	auto oneHot = batchWrapper(miniBatch);
-
 	return make_shared<OutputLayer>(BWi, oneHot);
 }
 
@@ -356,6 +369,7 @@ void Network::Train(const vector<vector<vector<vector<float>>>>& inputs,
 		std::cout << "\nEpoch " << (e + 1) << "/" << epochs << std::endl;
 
 		for (int b = 0; b < NUM_BATCHS; b++) {
+			BWs[0].reset();
 			BWs[0] = batchWrapper(getMiniBatch(inputs, b));
 			auto miniLabels = getMiniBatch(labels, b);
 
@@ -369,7 +383,6 @@ void Network::Train(const vector<vector<vector<vector<float>>>>& inputs,
 
 			auto lastBW = L->getBWout();
 			lastBW->backward(lr, r2, gradclip);
-
 			BWs[0]->resetGrad();
 		}
 
@@ -388,6 +401,7 @@ void Network::Test(const vector<vector<vector<vector<float>>>>& inputs, const ve
 	int C = labels[0][0][0].size();
 
 	for (int b = 0; b < NUM_BATCHS; b++) {
+		TestBWs[0].reset();
 		TestBWs[0] = batchWrapper(getMiniBatch(inputs, b));
 		auto miniLabels = getMiniBatch(labels, b);
 
@@ -417,6 +431,7 @@ vector<int> Network::Predict(const vector<vector<vector<vector<float>>>>& inputs
 	for (int b = 0; b < NUM_BATCHS; b++) {
 		auto miniBatch = getMiniBatch(inputs, b);
 
+		TestBWs[0].reset();
 		TestBWs[0] = batchWrapper(miniBatch);
 		auto L = OutputprivateLayer(miniBatch);
 
