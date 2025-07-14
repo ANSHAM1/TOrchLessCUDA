@@ -40,9 +40,9 @@ int main() {
     float clipVal = 1;
 
     Model.Train(inputs, labels, epochs, lr, r2strength, clipVal);
-    //Model.Test(inputs, labels);
+    Model.Test(inputs, labels);
 
-    //Model.showEvaluation();
+    Model.showEvaluation();
 }
 
 //ResNet - 18 Inspired(no actual skip for now)
