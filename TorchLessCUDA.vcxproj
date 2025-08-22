@@ -55,6 +55,10 @@
   <ItemGroup>
     <CudaCompile Include="Model.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
+    <None Include="README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FC09956C-709A-19B2-EE57-9A956548B516}</ProjectGuid>
     <RootNamespace>TorchLessCUDA</RootNamespace>

@@ -142,4 +142,8 @@
   <ItemGroup>
     <CudaCompile Include="Model.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
+    <None Include="README.md" />
+  </ItemGroup>
 </Project>
