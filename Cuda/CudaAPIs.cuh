@@ -8,11 +8,15 @@
 #include <type_traits>
 #include <cuda_fp16.h> 
 
-__global__ void FloatToHalf(const float* src, __half* dst, size_t n) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < n) {
-        dst[idx] = __float2half(src[idx]);
-    }
+__global__ void random_half_kernel(__half* data, size_t size, unsigned long long seed) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    curandStatePhilox4_32_10_t state;
+    curand_init(seed, idx, 0, &state);
+
+    float rnd = curand_uniform(&state);
+    data[idx] = __float2half(rnd);
 }
 
 _CUDNN_START
@@ -38,14 +42,9 @@ curandStatus_t FillTensorRandom(T* data, size_t size, cudaStream_t stream, unsig
         status = curandGenerateUniformDouble(gen, data, size);
     }
     else if constexpr (std::is_same_v<T, __half>) {
-        float* tmp;
-        cudaMallocAsync(&tmp, size * sizeof(float), stream);
-        status = curandGenerateUniform(gen, tmp, size);
-
         int threads = 256;
         int blocks = (size + threads - 1) / threads;
-        FloatToHalf<<<blocks, threads, 0, stream>>>(tmp, data, size);
-        cudaFreeAsync(tmp, stream);
+        random_half_kernel<<<blocks, threads, 0, stream>>>(data, size, seed);
     }
     else {
         static_assert(std::is_same_v<T, float> ||

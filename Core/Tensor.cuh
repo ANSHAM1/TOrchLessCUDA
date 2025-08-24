@@ -143,15 +143,21 @@ public:
         if (n > 0) storage_.allocate(n);
     }
 
-    explicit Tensor(const std::vector<size_t>& shape, T* raw_ptr, cudaStream_t stream = 0)
+    explicit Tensor(const std::vector<size_t>& shape, const T* raw_ptr, bool from_host = true, cudaStream_t stream = 0)
         : shape_(shape), strides_(compute_strides(shape)), stream_(stream) {
         storage_ = Storage<T>{};
         size_t n = shape_product(shape_);
         storage_.allocate(n);
+
         if (raw_ptr) {
             nvtx3::scoped_range asyncCopyRange{ "cudaMemcpyAsync raw_ptr -> storage" };
-            CUDA_CHECK(cudaMemcpyAsync(storage_.ptr(), raw_ptr, n * sizeof(T), cudaMemcpyDeviceToDevice, stream_));
+            if (from_host)
+                CUDA_CHECK(cudaMemcpyAsync(storage_.ptr(), raw_ptr, n * sizeof(T), cudaMemcpyHostToDevice, stream_));
+            else
+                CUDA_CHECK(cudaMemcpyAsync(storage_.ptr(), raw_ptr, n * sizeof(T), cudaMemcpyDeviceToDevice, stream_));
         }
+        else
+            throw std::runtime_error("raw_ptr is a null pointer");
     }
 
     Tensor(Tensor&& o) noexcept

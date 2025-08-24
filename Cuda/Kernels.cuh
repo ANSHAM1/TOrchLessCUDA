@@ -10,6 +10,21 @@
 #include <type_traits>
 #include <curand_kernel.h>
 #include <iostream>
+#include <string_view>
+#include <algorithm>
+
+template<size_t N>
+struct FixedString {
+    char data[N]{};
+
+    constexpr FixedString(const char(&str)[N]) {
+        std::copy_n(str, N, data);
+    }
+
+    constexpr operator std::string_view() const {
+        return { data, N - 1 };
+    }
+};
 
 _AM_START
 
@@ -30,6 +45,46 @@ cudaError_t ExecuteKernel(const char* label, dim3 blocks, dim3 threads, size_t s
 
 
 _KERNELS_START
+
+
+template<typename T, FixedString type>
+__global__ void ActivationKernel(const T* Input, T* Output, size_t size) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+    const T value = Input[idx];
+
+    if constexpr (type == "relu") {
+        if constexpr (std::is_same_v<T, __half>)
+            Output[idx] = __hgt(value, __float2half(0.0f)) ? value : __float2half(0.0f);
+        else 
+            Output[idx] = max(value, T(0));
+    }
+    else if constexpr (type == "tanh") {
+        if constexpr (std::is_same_v<T, __half>) {
+            float val_f = __half2float(value);
+            Output[idx] = __float2half(tanhf(val_f));
+        }
+        else if constexpr (std::is_same_v<T, float>)
+            Output[idx] = tanhf(value);
+        else
+            Output[idx] = tanh(value);
+    }
+    else if constexpr (type == "sigmoid") {
+        if constexpr (std::is_same_v<T, __half>) {
+            float val_f = __half2float(value);
+            Output[idx] = __float2half(1.0f / (1.0f + expf(-val_f)));
+        }
+        else if constexpr (std::is_same_v<T, float>)
+            Output[idx] = 1.0f / (1.0f + expf(-value));
+        else
+            Output[idx] = 1.0 / (1.0 + exp(-value));
+    }
+    else
+        static_assert(false, "Unsupported activation type provided to kernel.");
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 template<typename T>
 __global__ void FillTensor(T* data, T value, size_t size) {

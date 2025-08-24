@@ -57,6 +57,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
+    <None Include="Dataset\t10k-images.idx3-ubyte" />
+    <None Include="Dataset\t10k-labels.idx1-ubyte" />
+    <None Include="Dataset\train-images.idx3-ubyte" />
+    <None Include="Dataset\train-labels.idx1-ubyte" />
     <None Include="README.md" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

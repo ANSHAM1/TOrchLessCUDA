@@ -11,13 +11,13 @@ _AM_START
 template<FloatingTensorType T>
 class Layer {
 protected:
-    Tensor<T> Input;
+    Tensor<T> Input_Tensor;
     std::vector<size_t> OutputShape;
 
 public:
-    virtual void forward(const Tensor<T>& input, Tensor<T>& output) = 0;
+    virtual void forward(const Tensor<T>& Input, Tensor<T>& Output) = 0;
 
-    virtual void backward(const Tensor<T>& upstreamGrad, Tensor<T>& downstreamGrad) = 0;
+    //virtual void backward(const Tensor<T>& UpstreamGrad, Tensor<T>& DownstreamGrad) = 0;
 
     virtual const std::vector<size_t>& getOutputShape() const {
         return OutputShape;
@@ -41,20 +41,19 @@ public:
 
         size_t Hout = (InputShape[2] + 2 * Padding - kH) / Stride + 1;
         size_t Wout = (InputShape[3] + 2 * Padding - kW) / Stride + 1;
-        OutputShape = { InputShape[0], Cout, Hout, Wout };
+        this->OutputShape = { InputShape[0], Cout, Hout, Wout };
     }
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output, bool isTraining) override {
-        if (is_training) {
-            Input = Tensor<T>(input.shape(), input.data());
-        }
-    };
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+
+
+    }
 };
 
 template<FloatingTensorType T>
 class ActivationLayer : public Layer<T> {
 public:
-    Tensor<T> Input;
     std::string Type;
 
     ActivationLayer(const std::vector<size_t>& InputShape, const std::string& type)
@@ -62,16 +61,24 @@ public:
 
         if (Type != "relu" && Type != "tanh" && Type != "sigmoid")
             throw std::runtime_error("Not a valid activation function");
-        OutputShape = InputShape;
+        this->OutputShape = InputShape;
     }
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {};
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+
+        size_t size = Input.numel();
+        if (size == 0) return;
+
+        dim3 blocks((size + 255) / 256);
+        dim3 threads(256);
+        ARCH::ExecuteKernel("Activation", blocks, threads, 0, 0, KERNEL::ActivationKernel<T, Type>, Input.data(), Output.data(), size);
+    }
 };
 
 template<FloatingTensorType T>
 class PoolingLayer : public Layer<T> {
 public:
-    Tensor<T> Input;
     size_t kH, kW, Stride, Padding;
     std::string Type;
 
@@ -81,12 +88,14 @@ public:
         if (type != "max" && type != "avg") 
             throw std::runtime_error("invalid pooling type");
 
-        int Hout = ((InputShape[2] - kH + 2 * Padding) / Stride) + 1;
-        int Wout = ((InputShape[3] - kW + 2 * Padding) / Stride) + 1;
-        OutputShape = { InputShape[0], InputShape[1], Hout, Wout };
+        size_t Hout = ((InputShape[2] - kH + 2 * Padding) / Stride) + 1;
+        size_t Wout = ((InputShape[3] - kW + 2 * Padding) / Stride) + 1;
+        this->OutputShape = { InputShape[0], InputShape[1], Hout, Wout };
     }
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {};
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+    }
 };
 
 template<FloatingTensorType T>
@@ -95,31 +104,36 @@ public:
     Tensor<T> Input, Gamma, Beta;
 
     BatchNormLayer(const std::vector<size_t>& InputShape) {
+        this->SkipInInference = true;
         Gamma = Tensor<T>({ 1, InputShape[1], 1, 1 });
         Gamma.fill((T)1);
         Beta.zeros({ 1, InputShape[1], 1, 1 });
 
-        OutputShape = InputShape;
+        this->OutputShape = InputShape;
     }
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {};
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+    }
 };
 
 template<FloatingTensorType T>
 class DropoutLayer : public Layer<T> {
 public:
     Tensor<T> Input, Mask;
-    const unsigned float Prob;
+    float Prob;
 
-    DropoutLayer(const std::vector<size_t>& InputShape, const unsigned float p)
+    DropoutLayer(const std::vector<size_t>& InputShape, float p)
         : Prob(p) {
-
+        this->SkipInInference = true;
         Mask.zeros(InputShape);
 
-        OutputShape = InputShape;
+        this->OutputShape = InputShape;
     }
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {};
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+    }
 };
 
 template<FloatingTensorType T>
@@ -131,15 +145,17 @@ public:
     DenseLayer(const std::vector<size_t>& InputShape, size_t outNumFeature)
         : OutNumFeature(outNumFeature) {
 
-        int InNumFeature = shape_product(InputShape) / InputShape[0];
+        size_t InNumFeature = shape_product(InputShape) / InputShape[0];
 
         Weight = Tensor<T>({ OutNumFeature, InNumFeature, 1, 1 });
         Bias.zeros({ 1, 1, 1, OutNumFeature });
 
-        OutputShape = { InputShape[0], 1, 1, OutNumFeature };
+        this->OutputShape = { InputShape[0], 1, 1, OutNumFeature };
 	}
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {};
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+    }
 };
 
 template<FloatingTensorType T>
@@ -153,10 +169,12 @@ public:
 
         if (Type != "softmax" && Type != "sigmoid" && Type != "linear")
             throw std::runtime_error("Not a valid output function");
-        OutputShape = InputShape;
+        this->OutputShape = InputShape;
     }
 
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {};
+    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
+        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+    }
 };
 
     
@@ -165,6 +183,8 @@ class Sequential {
 private:
     std::vector<size_t> InputShape;
     std::vector<std::unique_ptr<Layer<T>>> Layers;
+
+    size_t NumBatch;
 
     Tensor<T> workspace_A_;
     Tensor<T> workspace_B_;
@@ -179,14 +199,89 @@ private:
         return Layers.back()->getOutputShape();
     }
 
+    void Compile() {
+        if (InputShape.empty()) {
+            throw std::runtime_error("Input shape not set. Call Input() before build().");
+        }
+        if (Layers.empty()) {
+            return;
+        }
+        if (is_built_) {
+            return;
+        }
+
+        size_t max_elements_A = 0;
+        size_t max_elements_B = 0;
+
+        max_elements_A = shape_product(InputShape);
+
+        std::vector<size_t> current_shape = InputShape;
+
+        for (size_t i = 0; i < Layers.size(); ++i) {
+            const auto& OutputShape = Layers[i]->getOutputShape();
+            size_t OutputElements = shape_product(OutputShape);
+
+            if (i % 2 == 0) { // Writes to B
+                if (OutputElements > max_elements_B) max_elements_B = OutputElements;
+            }
+            else { // Writes to A
+                if (OutputElements > max_elements_A) max_elements_A = OutputElements;
+            }
+            current_shape = OutputShape;
+        }
+
+        workspace_A_.resize({ max_elements_A });
+        workspace_B_.resize({ max_elements_B });
+
+        is_built_ = true;
+        std::cout << "Model built successfully." << std::endl;
+        std::cout << "Workspace A size: " << (max_elements_A * sizeof(T)) / (1024.0 * 1024.0) << " MB" << std::endl;
+        std::cout << "Workspace B size: " << (max_elements_B * sizeof(T)) / (1024.0 * 1024.0) << " MB" << std::endl;
+    }
+
+    Tensor<T>& forwardPassOptimized(const Tensor<T>& Input) {
+        if (!is_built_) {
+            throw std::runtime_error("Model not built. Call build() before forward().");
+        }
+        if (Input.shape() != InputShape) {
+            throw std::invalid_argument("Input tensor shape does not match model's expected input shape.");
+        }
+
+        const Tensor<T>* source = &Input;
+        Tensor<T>* destination = &workspace_B_;
+
+        for (size_t i = 0; i < Layers.size(); ++i) {
+            if (i % 2 == 0) {
+                source = (i == 0) ? &Input : &workspace_A_;
+                destination = &workspace_B_;
+            }
+            else {
+                source = &workspace_B_;
+                destination = &workspace_A_;
+            }
+
+            destination->resize(Layers[i]->getOutputShape());
+
+            Layers[i]->forward(*source, *destination);
+        }
+
+        if ((Layers.size() - 1) % 2 == 0) {
+            return workspace_B_;
+        }
+        else {
+            return workspace_A_;
+        }
+    }
+
 public:
     Sequential() = default;
 
-    void Input(const std::vector<size_t>& inputShape) {
-        if (inputShape.size() != 4) {
+    void Input(const std::vector<size_t>& Input_Shape, size_t batchSize) {
+        if (Input_Shape.size() != 4) {
             throw std::invalid_argument("Input shape must be of size 4 -> (N, C, H, W)");
         }
-        InputShape = inputShape;
+        InputShape = { batchSize, Input_Shape[1], Input_Shape[2], Input_Shape[3] };
+        NumBatch = Input_Shape[0] / batchSize;
     }
 
     void Conv2D(size_t Cout, size_t Cin, size_t kH, size_t kW, size_t s = 1, size_t p = 0) {
@@ -214,7 +309,7 @@ public:
         Layers.push_back(std::make_unique<BatchNormLayer<T>>(CurrentShape));
     }
 
-    void Dropout(const unsigned float p) {
+    void Dropout(float p) {
         const auto& CurrentShape = getCurrentOutputShape();
         Layers.push_back(std::make_unique<DropoutLayer<T>>(CurrentShape, p));
     }
@@ -229,84 +324,21 @@ public:
         Layers.push_back(std::make_unique<OutputLayer<T>>(CurrentShape, type));
 	}
 
-    void Compile() {
-        if (InputShape.empty()) {
-            throw std::runtime_error("Input shape not set. Call Input() before build().");
-        }
-        if (Layers.empty()) {
-            return;
-        }
+    void Predict(const Tensor<T>& Input) {
+        Compile();
+        //auto Predicted = forwardPassOptimized(Input);
+    }
 
-        size_t max_elements_A = 0;
-        size_t max_elements_B = 0;
+    void Testing(const Tensor<T>& Input, const Tensor<T>& Label) {
+        Compile();
+     /*   for () {
+            auto Predicted = forwardPassOptimized(input);
 
-        max_elements_A = shape_product(InputShape);
-
-        std::vector<size_t> current_shape = InputShape;
-
-        for (size_t i = 0; i < Layers.size(); ++i) {
-            const auto& OutputShape = Layers[i]->getOutputShape();
-            size_t OutputElements = shape_product(OutputShape);
-
-            if (i % 2 == 0) { // Writes to B
-                if (OutputElements > max_elements_B) max_elements_B = OutputElements;
-            }
-            else { // Writes to A
-                if (output_elements > max_elements_A) max_elements_A = output_elements;
-            }
-            current_shape = output_shape;
-        }
-
-        workspace_A_.resize({ max_elements_A });
-        workspace_B_.resize({ max_elements_B });
-
-        is_built_ = true;
-        std::cout << "Model built successfully." << std::endl;
-        std::cout << "Workspace A size: " << (max_elements_A * sizeof(T)) / (1024.0 * 1024.0) << " MB" << std::endl;
-        std::cout << "Workspace B size: " << (max_elements_B * sizeof(T)) / (1024.0 * 1024.0) << " MB" << std::endl;
+        }*/
     }
 
 
-    // --- NEW: The forward pass execution ---
-    Tensor<T>& forward(const Tensor<T>& input) {
-        if (!is_built_) {
-            throw std::runtime_error("Model not built. Call build() before forward().");
-        }
-        if (input.shape() != input_shape_) {
-            throw std::invalid_argument("Input tensor shape does not match model's expected input shape.");
-        }
 
-        // The initial input data is our first "source" tensor.
-        const Tensor<T>* source = &input;
-        Tensor<T>* destination = &workspace_B_; // First layer writes to B
-
-        for (size_t i = 0; i < layers_.size(); ++i) {
-            // Determine the correct input and output buffers for this layer.
-            if (i % 2 == 0) {
-                source = (i == 0) ? &input : &workspace_A_;
-                destination = &workspace_B_;
-            }
-            else {
-                source = &workspace_B_;
-                destination = &workspace_A_;
-            }
-
-            // The destination tensor needs to be reshaped to what the layer expects for its output.
-            // This does NOT reallocate memory, just changes the shape metadata.
-            destination->resize(layers_[i]->get_output_shape());
-
-            // Execute the layer's forward pass.
-            layers_[i]->forward(*source, *destination);
-        }
-
-        // The final result will be in the last written-to buffer.
-        if ((layers_.size() - 1) % 2 == 0) {
-            return workspace_B_;
-        }
-        else {
-            return workspace_A_;
-        }
-    }
 
 //    shared_ptr<BatchWrapper> CONFUSION_MATRIX;
 //    float ACCURACY;

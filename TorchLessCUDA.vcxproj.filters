@@ -16,6 +16,9 @@
     <Filter Include="nvtx3\nvtxDetail">
       <UniqueIdentifier>{88b9b6f7-b17e-4c76-984c-0bf6e6264399}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Dataset">
+      <UniqueIdentifier>{32bd7294-340d-45ab-8fdc-1436c88f70bd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Cnn.cuh">
@@ -145,5 +148,17 @@
   <ItemGroup>
     <None Include=".gitignore" />
     <None Include="README.md" />
+    <None Include="Dataset\t10k-images.idx3-ubyte">
+      <Filter>Dataset</Filter>
+    </None>
+    <None Include="Dataset\t10k-labels.idx1-ubyte">
+      <Filter>Dataset</Filter>
+    </None>
+    <None Include="Dataset\train-images.idx3-ubyte">
+      <Filter>Dataset</Filter>
+    </None>
+    <None Include="Dataset\train-labels.idx1-ubyte">
+      <Filter>Dataset</Filter>
+    </None>
   </ItemGroup>
 </Project>
