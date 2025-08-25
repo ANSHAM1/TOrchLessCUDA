@@ -31,11 +31,10 @@ template<FloatingTensorType T>
 class Conv2dLayer : public Layer<T> {
 public:
     Tensor<T> Kernel;
-    std::vector<size_t> KernelShape;
     size_t Stride, Padding;
 
-    Conv2dLayer(const std::vector<size_t>& InputShape, std::vector<size_t>& kernelShape, size_t s, size_t p)
-        : KernelShape(kernelShape), Stride(s), Padding(p) {
+    Conv2dLayer(const std::vector<size_t>& InputShape, std::vector<size_t>& KernelShape, size_t s, size_t p)
+        : Stride(s), Padding(p) {
 
         Kernel = Tensor<T>(KernelShape);
         Kernel.fillRandomOptimized(1234ULL);
@@ -48,23 +47,39 @@ public:
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
         this->InputTensor = Tensor<T>(Input.shape(), Input.data());
 
+        const auto& I_Shape = Input.shape();
+        const auto& K_Shape = Kernel.shape();
+        const auto& O_Shape = Output.shape();
+
+        const int N = I_Shape[0], C = I_Shape[1], H = I_Shape[2], W = I_Shape[3];
+        const int K = K_Shape[0], KH = K_Shape[2], KW = K_Shape[3];
+        const int OH = O_Shape[2], OW = O_Shape[3];
+
+        const size_t TILE_DIM = 16;
+        const size_t BLOCK_ROWS = 8;
+
+
+        const int PADDED_TILE_DIM = (TILE_DIM - 1) * Stride + KW;
+        size_t SharedMem = (PADDED_TILE_DIM * PADDED_TILE_DIM + KW * KH) * sizeof(T);
+
+        dim3 threads(TILE_DIM, BLOCK_ROWS);
+        dim3 blocks(
+            (OW + TILE_DIM - 1) / TILE_DIM,
+            (OH + TILE_DIM - 1) / TILE_DIM,
+            N * K
+        );
+
         size_t KERNEL_TILE_DIM = 0;
-
-        if (KernelShape[2] == 5 && KernelShape[3] == 5) {
+        if (KH == 5 && KW == 5)
             KERNEL_TILE_DIM = 5;
-        }
-        else if (KernelShape[2] == 3 && KernelShape[3] == 3) {
+        else if (KH == 3 && KW == 3)
             KERNEL_TILE_DIM = 3;
-        }
-        else {
+        else
             throw std::runtime_error("No optimized tiled kernel available for this kernel size.");
-        }
 
-        dim3 blocks((KernelShape[0] * KernelShape[1] + 127) / 128, (KernelShape[2] + 127) / 128, (KernelShape[3] + 127) / 128);
-        dim3 threads(128);
         ARCH::ExecuteKernel("Conv2D Kernel Launch", blocks, threads, SharedMem, 0,
-            KERNEL::TiledConv2dKernelF<T, TILE_DIM, BLOCK_ROWS, KERNEL_TILE_DIM>, input.data(), kernel.data(), output.data(),
-            N, C, H, W, K, KH, KW, stride, padding, OH, OW);
+            KERNEL::TiledConv2dKernelF<T, TILE_DIM, BLOCK_ROWS, KERNEL_TILE_DIM>, Input.data(), Kernel.data(), Output.data(),
+            N, C, H, W, K, KH, KW, Stride, Padding, OH, OW);
     }
 };
 
