@@ -11,7 +11,7 @@ _AM_START
 template<FloatingTensorType T>
 class Layer {
 protected:
-    Tensor<T> Input_Tensor;
+    Tensor<T> InputTensor;
     std::vector<size_t> OutputShape;
 
 public:
@@ -31,12 +31,13 @@ template<FloatingTensorType T>
 class Conv2dLayer : public Layer<T> {
 public:
     Tensor<T> Kernel;
+    std::vector<size_t> KernelShape;
     size_t Stride, Padding;
 
-    Conv2dLayer(const std::vector<size_t>& InputShape, size_t Cout, size_t Cin, size_t kH, size_t kW, size_t s, size_t p)
-        : Stride(s), Padding(p) {
+    Conv2dLayer(const std::vector<size_t>& InputShape, std::vector<size_t>& kernelShape, size_t s, size_t p)
+        : KernelShape(kernelShape), Stride(s), Padding(p) {
 
-        Kernel = Tensor<T>({ Cout, Cin, kH, kW });
+        Kernel = Tensor<T>(KernelShape);
         Kernel.fillRandomOptimized(1234ULL);
 
         size_t Hout = (InputShape[2] + 2 * Padding - kH) / Stride + 1;
@@ -45,9 +46,25 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
 
+        size_t KERNEL_TILE_DIM = 0;
 
+        if (KernelShape[2] == 5 && KernelShape[3] == 5) {
+            KERNEL_TILE_DIM = 5;
+        }
+        else if (KernelShape[2] == 3 && KernelShape[3] == 3) {
+            KERNEL_TILE_DIM = 3;
+        }
+        else {
+            throw std::runtime_error("No optimized tiled kernel available for this kernel size.");
+        }
+
+        dim3 blocks((KernelShape[0] * KernelShape[1] + 127) / 128, (KernelShape[2] + 127) / 128, (KernelShape[3] + 127) / 128);
+        dim3 threads(128);
+        ARCH::ExecuteKernel("Conv2D Kernel Launch", blocks, threads, SharedMem, 0,
+            KERNEL::TiledConv2dKernelF<T, TILE_DIM, BLOCK_ROWS, KERNEL_TILE_DIM>, input.data(), kernel.data(), output.data(),
+            N, C, H, W, K, KH, KW, stride, padding, OH, OW);
     }
 };
 
@@ -65,7 +82,7 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
 
         size_t size = Input.numel();
         if (size == 0) return;
@@ -94,7 +111,7 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
     }
 };
 
@@ -113,7 +130,7 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
     }
 };
 
@@ -132,7 +149,7 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
     }
 };
 
@@ -154,7 +171,7 @@ public:
 	}
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
     }
 };
 
@@ -173,7 +190,7 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->Input_Tensor = Tensor<T>(Input.shape(), Input.data());
+        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
     }
 };
 
@@ -284,9 +301,12 @@ public:
         NumBatch = Input_Shape[0] / batchSize;
     }
 
-    void Conv2D(size_t Cout, size_t Cin, size_t kH, size_t kW, size_t s = 1, size_t p = 0) {
+    void Conv2D(const std::vector<size_t>& Kernel_Shape, size_t s = 1, size_t p = 0) {
+        if (Kernel_Shape.size() != 4) {
+            throw std::invalid_argument("Input shape must be of size 4 -> (N, C, H, W)");
+        }
         const auto& CurrentShape = getCurrentOutputShape();
-        Layers.push_back(std::make_unique<Conv2dLayer<T>>(CurrentShape, Cout, Cin, kH, kW, s, p));
+        Layers.push_back(std::make_unique<Conv2dLayer<T>>(CurrentShape, Kernel_Shape, s, p));
     }
 
     void Activate(const std::string& type) {

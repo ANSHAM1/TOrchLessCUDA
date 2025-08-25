@@ -46,6 +46,75 @@ cudaError_t ExecuteKernel(const char* label, dim3 blocks, dim3 threads, size_t s
 
 _KERNELS_START
 
+//CUDA Grid(Thousands of Blocks)
+//+ -----------------------------------------------------+
+//|                                                      |
+//|   Grid Dimension Z : Maps to(Batch, Output Channel)  |
+//|   Grid Dimension Y : Maps to Output Height Tiles     |
+//|   Grid Dimension X : Maps to Output Width Tiles      |
+//|                                                      |
+//+------------------------------------------------------+
+//|
+//| Each cube in this grid is one Thread Block.
+//| It is assigned a unique(blockIdx.x, blockIdx.y, blockIdx.z).
+//|
+//V
+//One Thread Block(e.g., 128 threads)
+//+ -----------------------------------------------------+
+//|                                                      |
+//|   Responsibility: Compute one 16x16 output tile.     |
+//|                                                      |
+//|   blockIdx.z->Determines which image in the batch    |
+//| and which output channel(filter)                     |
+//|                 this block works on.                 |
+//|                                                      |
+//|   blockIdx.y->Determines the row of the tile in      |
+//|                 the output feature map.              |
+//|                                                      |
+//|   blockIdx.x->Determines the column of the tile.     |
+//|                                                      |
+//+------------------------------------------------------+
+//|
+//| The block achieves this using a 3 - step process
+//| involving shared memory.
+//|
+//V
+//+ -----------------------+ -- +-------------------------+
+//| GLOBAL MEMORY(Slow)    |    |   GLOBAL MEMORY(Slow)   |
+//|      Input Tensor      |    |      Kernel Tensor      |
+//+------------------------+ -- +-------------------------+
+//^ ^
+//| (Step 1: Coalesced Load)         |
+//|                                  |
+//+-------------------------------------------------------+
+//| SHARED MEMORY(Fast Cache)                             |
+//|  +-------------------+ - +------------------------+   |
+//|  |   Input Tile      |   |   Kernel Tile          |   |
+//|  +-------------------+ - +------------------------+   |
+//+-------------------------------------------------------+
+//^ ^
+//| (Step 3: Fast Reads)                                  |
+//|                                                       |
+//+----------------------------------------------------------+
+//| THREADS(Registers - Fastest)                             |
+//|                                                          |
+//|   Thread(tx, ty) :                                       |
+//|   -Loads one piece of Input & Kernel into Shared Mem.    |
+//|   -Accumulates result for one output pixel in a register.|
+//|                                                          |
+//+----------------------------------------------------------+
+//|
+//| (Step 4: Final Write)
+//V
+//+ ------------------------+
+//| GLOBAL MEMORY(Slow)     |
+//|      Output Tensor      |
+//+-------------------------+
+
+template<typename T, int TILE_DIM, int BLOCK_ROWS, int KERNEL_TILE_DIM>
+__global__ void TiledConv2dKernelF(const T* Input, T* Output, size_t size) {
+
+}
 
 template<typename T, FixedString type>
 __global__ void ActivationKernel(const T* Input, T* Output, size_t size) {
