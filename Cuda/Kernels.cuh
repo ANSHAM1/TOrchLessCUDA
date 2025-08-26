@@ -46,6 +46,10 @@ cudaError_t ExecuteKernel(const char* label, dim3 blocks, dim3 threads, size_t s
 
 _KERNELS_START
 
+// ==========================================================================================
+//  Optimized Tiled 2D Convolution Kernel
+// ==========================================================================================
+
 //CUDA Grid(Thousands of Blocks)
 //+ -----------------------------------------------------+
 //|                                                      |
@@ -111,10 +115,93 @@ _KERNELS_START
 //|      Output Tensor      |
 //+-------------------------+
 
-template<typename T, int TILE_DIM, int BLOCK_ROWS, int KERNEL_TILE_DIM>
-__global__ void TiledConv2dKernelF(const T* Input, T* Output, size_t size) {
+// REMINDER: This "tiled" approach is much faster than a naive kernel because it uses
+// fast shared memory as a cache to minimize slow global memory access.
 
+// TEMPLATE PARAMS: These must be compile-time constants. This allows the compiler
+// to perform major optimizations like loop unrolling.
+template<typename T, int TILE_DIM, int BLOCK_ROWS, int KERNEL_TILE_DIM>
+__global__ void TiledConv2dKernelF(const T* input, const T* kernel, T* output,
+    const int N, const int C, const int H, const int W,
+    const int K, const int KH, const int KW,
+    const int S, const int P,
+    const int OH, const int OW) {
+
+    // --- Shared Memory: A fast, programmable L1 cache for one thread block ---
+    // Used to store a "tile" of the input and kernel, avoiding repeated global memory reads.
+    constexpr int PADDED_TILE_DIM = (TILE_DIM - 1) * S + KERNEL_TILE_DIM;
+    extern __shared__ T s_data[];
+    T* s_input = s_data;
+    T* s_kernel = &s_data[PADDED_TILE_DIM * PADDED_TILE_DIM];
+
+    // --- Indexing: Map threads and blocks to the overall problem ---
+    // A thread block computes one `TILE_DIM x TILE_DIM` tile of the output.
+    const int tile_x = blockIdx.x * TILE_DIM;
+    const int tile_y = blockIdx.y * TILE_DIM;
+    // A thread computes one pixel within that tile.
+    const int thread_x = threadIdx.x;
+    const int thread_y = threadIdx.y;
+    const int out_x = tile_x + thread_x;
+    const int out_y = tile_y + thread_y;
+    // The Z-dimension of the grid maps to the batch and output channel.
+    const int batch_idx = blockIdx.z / K;
+    const int kernel_idx = blockIdx.z % K;
+
+    // Use a register for the accumulator: fastest possible memory.
+    T accumulator = T(0);
+
+    // --- Main Loop: Process one input channel at a time ---
+    for (int c = 0; c < C; ++c) {
+        // --- Step 1: Cooperative & Coalesced Load ---
+        // The block's threads work as a team to load data from slow global memory
+        // into fast shared memory. This is done in a structured ("coalesced") way
+        // to maximize memory bandwidth.
+        int input_tile_start_y = tile_y * S - P;
+        int input_tile_start_x = tile_x * S - P;
+        for (int i = thread_y; i < PADDED_TILE_DIM; i += BLOCK_ROWS) {
+            for (int j = thread_x; j < PADDED_TILE_DIM; j += TILE_DIM) {
+                int load_y = input_tile_start_y + i;
+                int load_x = input_tile_start_x + j;
+                if (load_y >= 0 && load_y < H && load_x >= 0 && load_x < W) {
+                    s_input[i * PADDED_TILE_DIM + j] = input[((batch_idx * C + c) * H + load_y) * W + load_x];
+                }
+                else {
+                    s_input[i * PADDED_TILE_DIM + j] = T(0); // Handle padding
+                }
+            }
+        }
+        if (thread_y < KERNEL_TILE_DIM && thread_x < KERNEL_TILE_DIM) {
+            s_kernel[thread_y * KERNEL_TILE_DIM + thread_x] = kernel[((kernel_idx * C + c) * KH + thread_y) * KW + thread_x];
+        }
+
+        // --- Step 2: Synchronize ---
+        // Wait until ALL threads in the block have finished loading into shared memory.
+        __syncthreads();
+
+        // --- Step 3: Local Computation ---
+        // Each thread computes its result using ONLY the data in fast shared memory.
+        // This avoids the global memory bottleneck and is the key to performance.
+        if (out_y < OH && out_x < OW) {
+            for (int kh = 0; kh < KH; ++kh) {
+                for (int kw = 0; kw < KW; ++kw) {
+                    accumulator += s_input[(thread_y * S + kh) * PADDED_TILE_DIM + (thread_x * S + kw)] * s_kernel[kh * KW + kw];
+                }
+            }
+        }
+
+        // --- Step 4: Synchronize Again ---
+        // Wait for all calculations to finish before the next loop iteration overwrites shared memory.
+        __syncthreads();
+    }
+
+    // --- Step 5: Final Write ---
+    // Each thread writes its final result to global memory only ONCE.
+    if (out_y < OH && out_x < OW) {
+        output[((batch_idx * K + kernel_idx) * OH + out_y) * OW + out_x] = accumulator;
+    }
 }
+
+// -----------------------------------------------------------------------------------------------------------------------
 
 template<typename T, FixedString type>
 __global__ void ActivationKernel(const T* Input, T* Output, size_t size) {
@@ -153,7 +240,10 @@ __global__ void ActivationKernel(const T* Input, T* Output, size_t size) {
         static_assert(false, "Unsupported activation type provided to kernel.");
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------------------------------------------------------
 
 template<typename T>
 __global__ void FillTensor(T* data, T value, size_t size) {

@@ -27,6 +27,40 @@ public:
     virtual ~Layer() {}
 };
 
+//What is Loop Unrolling ?
+//Loop unrolling is a compiler optimization technique where the compiler replaces a loop with a sequence of repeated, 
+// straight - line code.Instead of having instructions to increment a counter and branch back to the start of the loop, 
+// the compiler simply "unrolls" the loop's body multiple times.
+
+//A Simple Example :
+//Imagine this simple loop :
+
+//for (int i = 0; i < 3; ++i) {
+//    do_something(i);
+//}
+
+//A compiler might unroll this loop and transform it into this much faster, branch - free code :
+
+//do_something(0);
+//do_something(1);
+//do_something(2);
+
+//Why Does It Happen ?
+//It happens because loops have hidden costs.For every iteration, the processor has to :
+//Increment the loop counter(i++).
+//Compare the counter to the limit(i < 3).
+//Branch(jump) back to the start of the loop.
+
+//These operations, especially the branch, can be slow and prevent the processor from executing instructions in a 
+// smooth pipeline.By unrolling the loop, the compiler eliminates this overhead, resulting in a larger but faster 
+// sequence of instructions.It also gives the compiler's instruction scheduler more flexibility to reorder operations 
+// for maximum efficiency.
+
+//Does It Happen Automatically ?
+//Yes, it's an automatic optimization. Modern compilers (like nvcc for CUDA or g++/MSVC for C++) are very intelligent. 
+// When you compile your code with optimization flags enabled (like -O2 or -O3), the compiler will automatically unroll
+// small loops where it knows the number of iterations at compile time.
+
 template<FloatingTensorType T>
 class Conv2dLayer : public Layer<T> {
 public:
@@ -51,13 +85,12 @@ public:
         const auto& K_Shape = Kernel.shape();
         const auto& O_Shape = Output.shape();
 
-        const int N = I_Shape[0], C = I_Shape[1], H = I_Shape[2], W = I_Shape[3];
-        const int K = K_Shape[0], KH = K_Shape[2], KW = K_Shape[3];
-        const int OH = O_Shape[2], OW = O_Shape[3];
+        const size_t N = I_Shape[0], C = I_Shape[1], H = I_Shape[2], W = I_Shape[3];
+        const size_t K = K_Shape[0], KH = K_Shape[2], KW = K_Shape[3];
+        const size_t OH = O_Shape[2], OW = O_Shape[3];
 
         const size_t TILE_DIM = 16;
-        const size_t BLOCK_ROWS = 8;
-
+        const size_t BLOCK_ROWS = 16;
 
         const int PADDED_TILE_DIM = (TILE_DIM - 1) * Stride + KW;
         size_t SharedMem = (PADDED_TILE_DIM * PADDED_TILE_DIM + KW * KH) * sizeof(T);
@@ -69,11 +102,17 @@ public:
             N * K
         );
 
+        // --- Kernel Specialization: The reason for the if/else block ---
+        // We must call a specific template instantiation with a COMPILE-TIME constant (e.g., 5 or 3).
+        // This allows the compiler to perform critical optimizations like loop unrolling,
+        // which is why we have separate versions for common kernel sizes.
         size_t KERNEL_TILE_DIM = 0;
-        if (KH == 5 && KW == 5)
-            KERNEL_TILE_DIM = 5;
-        else if (KH == 3 && KW == 3)
+        if (KH == 3 && KW == 3)
             KERNEL_TILE_DIM = 3;
+        else if (KH == 5 && KW == 5)
+            KERNEL_TILE_DIM = 5;
+        else if (KH == 7 && KW == 7)
+            KERNEL_TILE_DIM = 7;
         else
             throw std::runtime_error("No optimized tiled kernel available for this kernel size.");
 
