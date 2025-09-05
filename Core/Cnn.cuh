@@ -143,7 +143,8 @@ public:
 
         dim3 blocks((size + 255) / 256);
         dim3 threads(256);
-        ARCH::ExecuteKernel("Activation", blocks, threads, 0, 0, KERNEL::ActivationKernel<T, Type>, Input.data(), Output.data(), size);
+
+        ARCH::ExecuteKernel("Activation", blocks, threads, 0, 0, KERNEL::ActivationKernelF<T, Type>, Input.data(), Output.data(), size);
     }
 };
 
@@ -153,10 +154,10 @@ public:
     size_t kH, kW, Stride, Padding;
     std::string Type;
 
-    PoolingLayer(const std::vector<size_t>& InputShape, size_t kh, size_t kw, size_t s, size_t p, const std::string& type) 
+    PoolingLayer(const std::vector<size_t>& InputShape, size_t kh, size_t kw, size_t s, size_t p, const std::string& type)
         : kH(kh), kW(kw), Stride(s), Padding(p), Type(type) {
 
-        if (type != "max" && type != "avg") 
+        if (type != "max" && type != "avg")
             throw std::runtime_error("invalid pooling type");
 
         size_t Hout = ((InputShape[2] - kH + 2 * Padding) / Stride) + 1;
@@ -165,26 +166,17 @@ public:
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
-    }
-};
+        this->InputTensor = Tensor<T>(InputShape, Input.data());
 
-template<FloatingTensorType T>
-class BatchNormLayer : public Layer<T> {
-public:
-    Tensor<T> Input, Gamma, Beta;
+        int Hout = this->OutputShape[2];
+        int Wout = this->OutputShape[3];
 
-    BatchNormLayer(const std::vector<size_t>& InputShape) {
-        this->SkipInInference = true;
-        Gamma = Tensor<T>({ 1, InputShape[1], 1, 1 });
-        Gamma.fill((T)1);
-        Beta.zeros({ 1, InputShape[1], 1, 1 });
+        dim3 threads(16, 16);
+        dim3 blocks((Wout + block.x - 1) / block.x, this->OutputShape[1], this->OutputShape[0]);
 
-        this->OutputShape = InputShape;
-    }
-
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
+        ARCH::ExecuteKernel("maxPooling", blocks, threads, 0, 0, KERNEL::MaxPool2DKernelF<T>, Input.data(), Output.data(),
+            this->OutputShape[0], this->OutputShape[1], Input.shape()[2], Input.shape()[3],
+            Hout, Wout, kH, kW, Stride, Padding);
     }
 };
 
@@ -378,11 +370,6 @@ public:
         Layers.push_back(std::make_unique<PoolingLayer<T>>(CurrentShape, kh, kw, s, p, "avg"));
     }
 
-    void BatchNorm() {
-        const auto& CurrentShape = getCurrentOutputShape();
-        Layers.push_back(std::make_unique<BatchNormLayer<T>>(CurrentShape));
-    }
-
     void Dropout(float p) {
         const auto& CurrentShape = getCurrentOutputShape();
         Layers.push_back(std::make_unique<DropoutLayer<T>>(CurrentShape, p));
@@ -400,7 +387,7 @@ public:
 
     void Predict(const Tensor<T>& Input) {
         Compile();
-        //auto Predicted = forwardPassOptimized(Input);
+        auto Predicted = forwardPassOptimized(Input);
     }
 
     void Testing(const Tensor<T>& Input, const Tensor<T>& Label) {
