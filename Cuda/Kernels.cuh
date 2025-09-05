@@ -242,6 +242,46 @@ __global__ void ActivationKernel(const T* Input, T* Output, size_t size) {
 
 // -----------------------------------------------------------------------------------------------------------------------
 
+template<typename T>
+__global__ void MaxPool2DKernelF(
+    const T* __restrict__ Input,
+    T* __restrict__ Output,
+    int N, int C, int H, int W,
+    int Hout, int Wout,
+    int kH, int kW,
+    int Stride, int Padding)
+{
+    extern __shared__ T tile[];
+
+    int n = blockIdx.z;     // batch index
+    int c = blockIdx.y;     // channel index
+
+    int out_x = blockIdx.x * blockDim.x + threadIdx.x;
+    int out_y = threadIdx.y;
+
+    if (out_x >= Wout || out_y >= Hout) return;
+
+    // Map to input coordinates
+    int in_x_start = out_x * Stride - Padding;
+    int in_y_start = out_y * Stride - Padding;
+
+    T maxval = -FLT_MAX;
+
+    for (int ky = 0; ky < kH; ky++) {
+        for (int kx = 0; kx < kW; kx++) {
+            int in_y = in_y_start + ky;
+            int in_x = in_x_start + kx;
+            if (in_y >= 0 && in_y < H && in_x >= 0 && in_x < W) {
+                size_t idx = ((n * C + c) * H + in_y) * W + in_x;
+                T v = Input[idx];
+                maxval = v > maxval ? v : maxval;
+            }
+        }
+    }
+
+    size_t out_idx = ((n * C + c) * Hout + out_y) * Wout + out_x;
+    Output[out_idx] = maxval;
+}
 
 // -----------------------------------------------------------------------------------------------------------------------
 
