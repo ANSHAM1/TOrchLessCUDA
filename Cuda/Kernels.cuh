@@ -283,6 +283,47 @@ __global__ void MaxPool2DKernelF(
     Output[out_idx] = maxval;
 }
 
+template<typename T>
+__global__ void AvgPoolingKernelF(
+    const T* __restrict__ input,
+    T* __restrict__ output,
+    int N, int C, int H, int W,
+    int outH, int outW,
+    int kH, int kW,
+    int strideH, int strideW,
+    int padH, int padW)
+{
+    int n = blockIdx.z;
+    int c = blockIdx.y;
+    int out_row = blockIdx.x / outW;
+    int out_col = blockIdx.x % outW;
+
+    if (out_row >= outH || out_col >= outW) return;
+
+    int h_start = out_row * strideH - padH;
+    int w_start = out_col * strideW - padW;
+
+    T sum = T(0);
+    int count = 0;
+
+    for (int i = 0; i < kH; ++i) {
+        int h = h_start + i;
+        if (h >= 0 && h < H) {
+            for (int j = 0; j < kW; ++j) {
+                int w = w_start + j;
+                if (w >= 0 && w < W) {
+                    int input_idx = ((n * C + c) * H + h) * W + w;
+                    sum += input[input_idx];
+                    count++;
+                }
+            }
+        }
+    }
+
+    int output_idx = ((n * C + c) * outH + out_row) * outW + out_col;
+    output[output_idx] = count > 0 ? sum / count : T(0);
+}
+
 // -----------------------------------------------------------------------------------------------------------------------
 
 template<typename T>
