@@ -204,7 +204,7 @@ __global__ void TiledConv2dKernelF(const T* input, const T* kernel, T* output,
 // -----------------------------------------------------------------------------------------------------------------------
 
 template<typename T, FixedString type>
-__global__ void ActivationKernel(const T* Input, T* Output, size_t size) {
+__global__ void ActivationKernelF(const T* Input, T* Output, size_t size) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= size) return;
 
@@ -284,7 +284,7 @@ __global__ void MaxPool2DKernelF(
 }
 
 template<typename T>
-__global__ void AvgPoolingKernelF(
+__global__ void AvgPool2DKernelF(
     const T* __restrict__ input,
     T* __restrict__ output,
     int N, int C, int H, int W,
@@ -322,6 +322,163 @@ __global__ void AvgPoolingKernelF(
 
     int output_idx = ((n * C + c) * outH + out_row) * outW + out_col;
     output[output_idx] = count > 0 ? sum / count : T(0);
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+
+template<typename T>
+__global__ void DenseKernelF(
+    const T* __restrict__ input,   // [batch_size, InNumFeature]
+    const T* __restrict__ weight,  // [OutNumFeature, InNumFeature]
+    const T* __restrict__ bias,    // [OutNumFeature]
+    T* __restrict__ output,        // [batch_size, OutNumFeature]
+    int batch_size,
+    int InNumFeature,
+    int OutNumFeature)
+{
+    // Each thread computes one output element (b, o)
+    int batch_idx = blockIdx.y * blockDim.y + threadIdx.y;
+    int out_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (batch_idx >= batch_size || out_idx >= OutNumFeature)
+        return;
+
+    T sum = 0;
+
+    // Iterate over all input features
+    for (int in_idx = 0; in_idx < InNumFeature; ++in_idx) {
+        T in_val = input[batch_idx * InNumFeature + in_idx];
+        T w_val = weight[out_idx * InNumFeature + in_idx];
+        sum += in_val * w_val;
+    }
+
+    // Add bias
+    sum += bias[out_idx];
+
+    // Store result
+    output[batch_idx * OutNumFeature + out_idx] = sum;
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+
+template<typename T>
+__global__ void SigmoidKernelF(
+    const T* __restrict__ input,   // [batch_size, 1, 1, classDim]
+    T* __restrict__ output,        // [batch_size, 1, 1, classDim]
+    int total_elements)           // batch_size * classDim
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= total_elements) return;
+
+    T x = input[idx];
+    output[idx] = static_cast<T>(1) / (static_cast<T>(1) + exp(-x));
+}
+
+template<typename T>
+__global__ void SoftmaxKernelF(
+    const T* __restrict__ input,   // [batch_size, 1, 1, classDim]
+    T* __restrict__ output,        // [batch_size, 1, 1, classDim]
+    int batch_size,
+    int classDim)
+{
+    int b = blockIdx.x * blockDim.x + threadIdx.x;
+    if (b >= batch_size) return;
+
+    int base_idx = b * classDim;
+
+    // Step 1: Find max value for numerical stability
+    T max_val = input[base_idx];
+    for (int i = 1; i < classDim; ++i) {
+        max_val = max(max_val, input[base_idx + i]);
+    }
+
+    // Step 2: Compute exponentials and sum
+    T sum_exp = static_cast<T>(0);
+    for (int i = 0; i < classDim; ++i) {
+        output[base_idx + i] = exp(input[base_idx + i] - max_val);
+        sum_exp += output[base_idx + i];
+    }
+
+    // Step 3: Normalize to get softmax output
+    for (int i = 0; i < classDim; ++i) {
+        output[base_idx + i] /= sum_exp;
+    }
+}
+
+template<typename T>
+__global__ void SigmoidBCEKernelF(
+    const T* __restrict__ input,   // [batch_size, 1, 1, 2]
+    const T* __restrict__ label,   // [batch_size, 1, 1, 2]
+    T* __restrict__ output,        // [batch_size, 1, 1, 2]
+    T* __restrict__ loss,          // [batch_size]
+    int batch_size)
+{
+    int b = blockIdx.x * blockDim.x + threadIdx.x;
+    if (b >= batch_size) return;
+
+    // For simplicity assume classDim == 2 for sigmoid output
+    int base_idx = b * 2;
+
+    // Apply sigmoid activation
+    T x0 = input[base_idx];
+    T x1 = input[base_idx + 1];
+
+    T s0 = static_cast<T>(1) / (static_cast<T>(1) + exp(-x0));
+    T s1 = static_cast<T>(1) / (static_cast<T>(1) + exp(-x1));
+
+    output[base_idx] = s0;
+    output[base_idx + 1] = s1;
+
+    // Compute binary cross-entropy loss
+    T y0 = label[base_idx];
+    T y1 = label[base_idx + 1];
+
+    T l0 = -(y0 * log(max(s0, static_cast<T>(1e-7))) + (static_cast<T>(1) - y0) * log(max(static_cast<T>(1) - s0, static_cast<T>(1e-7))));
+    T l1 = -(y1 * log(max(s1, static_cast<T>(1e-7))) + (static_cast<T>(1) - y1) * log(max(static_cast<T>(1) - s1, static_cast<T>(1e-7))));
+
+    loss[b] = l0 + l1;
+}
+
+template<typename T>
+__global__ void SoftmaxCCEKernelF(
+    const T* __restrict__ input,   // [batch_size, 1, 1, classDim]
+    const T* __restrict__ label,   // [batch_size, 1, 1, classDim]
+    T* __restrict__ output,        // [batch_size, 1, 1, classDim]
+    T* __restrict__ loss,          // [batch_size]
+    int batch_size,
+    int classDim)
+{
+    int b = blockIdx.x * blockDim.x + threadIdx.x;
+    if (b >= batch_size) return;
+
+    int base_idx = b * classDim;
+
+    // 1. Find max for numerical stability
+    T max_val = input[base_idx];
+    for (int i = 1; i < classDim; ++i) {
+        max_val = max(max_val, input[base_idx + i]);
+    }
+
+    // 2. Compute exponentials and sum
+    T sum_exp = static_cast<T>(0);
+    for (int i = 0; i < classDim; ++i) {
+        output[base_idx + i] = exp(input[base_idx + i] - max_val);
+        sum_exp += output[base_idx + i];
+    }
+
+    // 3. Normalize to get softmax output
+    for (int i = 0; i < classDim; ++i) {
+        output[base_idx + i] /= sum_exp;
+    }
+
+    // 4. Compute categorical cross-entropy loss
+    T l = static_cast<T>(0);
+    for (int i = 0; i < classDim; ++i) {
+        T y = label[base_idx + i];
+        T s = max(output[base_idx + i], static_cast<T>(1e-7)); // prevent log(0)
+        l += -y * log(s);
+    }
+    loss[b] = l;
 }
 
 // -----------------------------------------------------------------------------------------------------------------------

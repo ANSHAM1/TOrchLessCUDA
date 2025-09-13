@@ -23,43 +23,8 @@ public:
         return OutputShape;
     }
 
-    bool SkipInInference = false;
     virtual ~Layer() {}
 };
-
-//What is Loop Unrolling ?
-//Loop unrolling is a compiler optimization technique where the compiler replaces a loop with a sequence of repeated, 
-// straight - line code.Instead of having instructions to increment a counter and branch back to the start of the loop, 
-// the compiler simply "unrolls" the loop's body multiple times.
-
-//A Simple Example :
-//Imagine this simple loop :
-
-//for (int i = 0; i < 3; ++i) {
-//    do_something(i);
-//}
-
-//A compiler might unroll this loop and transform it into this much faster, branch - free code :
-
-//do_something(0);
-//do_something(1);
-//do_something(2);
-
-//Why Does It Happen ?
-//It happens because loops have hidden costs.For every iteration, the processor has to :
-//Increment the loop counter(i++).
-//Compare the counter to the limit(i < 3).
-//Branch(jump) back to the start of the loop.
-
-//These operations, especially the branch, can be slow and prevent the processor from executing instructions in a 
-// smooth pipeline.By unrolling the loop, the compiler eliminates this overhead, resulting in a larger but faster 
-// sequence of instructions.It also gives the compiler's instruction scheduler more flexibility to reorder operations 
-// for maximum efficiency.
-
-//Does It Happen Automatically ?
-//Yes, it's an automatic optimization. Modern compilers (like nvcc for CUDA or g++/MSVC for C++) are very intelligent. 
-// When you compile your code with optimization flags enabled (like -O2 or -O3), the compiler will automatically unroll
-// small loops where it knows the number of iterations at compile time.
 
 template<FloatingTensorType T>
 class Conv2dLayer : public Layer<T> {
@@ -144,7 +109,8 @@ public:
         dim3 blocks((size + 255) / 256);
         dim3 threads(256);
 
-        ARCH::ExecuteKernel("Activation", blocks, threads, 0, 0, KERNEL::ActivationKernelF<T, Type>, Input.data(), Output.data(), size);
+        ARCH::ExecuteKernel("Activation", blocks, threads, 0, 0, KERNEL::ActivationKernelF<T, Type>, 
+            Input.data(), Output.data(), size);
     }
 };
 
@@ -174,28 +140,14 @@ public:
         dim3 threads(16, 16);
         dim3 blocks((Wout + block.x - 1) / block.x, this->OutputShape[1], this->OutputShape[0]);
 
-        ARCH::ExecuteKernel("maxPooling", blocks, threads, 0, 0, KERNEL::MaxPool2DKernelF<T>, Input.data(), Output.data(),
-            this->OutputShape[0], this->OutputShape[1], Input.shape()[2], Input.shape()[3],
-            Hout, Wout, kH, kW, Stride, Padding);
-    }
-};
-
-template<FloatingTensorType T>
-class DropoutLayer : public Layer<T> {
-public:
-    Tensor<T> Input, Mask;
-    float Prob;
-
-    DropoutLayer(const std::vector<size_t>& InputShape, float p)
-        : Prob(p) {
-        this->SkipInInference = true;
-        Mask.zeros(InputShape);
-
-        this->OutputShape = InputShape;
-    }
-
-    void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
-        this->InputTensor = Tensor<T>(Input.shape(), Input.data());
+        if(Type == "avg")
+            ARCH::ExecuteKernel("avg Pooling", blocks, threads, 0, 0, KERNEL::AvgPool2DKernelF<T>, Input.data(), Output.data(),
+                this->OutputShape[0], this->OutputShape[1], Input.shape()[2], Input.shape()[3],
+                Hout, Wout, kH, kW, Stride, Padding);
+		else
+            ARCH::ExecuteKernel("max Pooling", blocks, threads, 0, 0, KERNEL::MaxPool2DKernelF<T>, Input.data(), Output.data(),
+                this->OutputShape[0], this->OutputShape[1], Input.shape()[2], Input.shape()[3],
+                Hout, Wout, kH, kW, Stride, Padding);
     }
 };
 
@@ -218,29 +170,62 @@ public:
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
         this->InputTensor = Tensor<T>(Input.shape(), Input.data());
+
+        int batch_size = Input.shape()[0];
+        int InNumFeature = shape_product(Input.shape()) / batch_size;
+        int OutNumFeature = DenseLayer.OutNumFeature;
+
+        dim3 threads(16, 16);
+        dim3 blocks((OutNumFeature + blockSize.x - 1) / blockSize.x,
+            (batch_size + blockSize.y - 1) / blockSize.y);
+
+		ARCH::ExecuteKernel("Dense Layer", blocks, threads, 0, 0, KERNEL::DenseKernelF<T>, Input.data(), Weight.data(),
+            Bias.data(), Output.data(), batch_size, InNumFeature, OutNumFeature);
     }
 };
 
 template<FloatingTensorType T>
 class OutputLayer : public Layer<T> {
 public:
-    Tensor<T> Input;
-    std::string Type;
+    Tensor<T> Input, Label, Loss;
+	std::string Type;
 
-    OutputLayer(const std::vector<size_t>& InputShape, const std::string type) 
-        : Type(type) {
-
-        if (Type != "softmax" && Type != "sigmoid" && Type != "linear")
-            throw std::runtime_error("Not a valid output function");
+    OutputLayer(const std::vector<size_t>& InputShape) {
         this->OutputShape = InputShape;
+        
+		size_t classDim = InputShape[3];
+        if(classDim == 2) Type = "sigmoid";
+		else if(classDim > 2) Type = "softmax";
+		else throw std::runtime_error("Invalid output shape for output layer");
     }
 
     void forward(const Tensor<T>& Input, Tensor<T>& Output) override {
         this->InputTensor = Tensor<T>(Input.shape(), Input.data());
+        
+        int batch_size = Input.shape()[0];
+        int classDim = Input.shape()[3];
+        int total_elements = batch_size * classDim;
+
+        dim3 threads(256);
+        dim3 blocks((total_elements + blockSize.x - 1) / blockSize.x);
+
+        if (Type == "sigmoid") {
+            ARCH::ExecuteKernel("Sigmoid", blocks, threads, 0, 0, KERNEL::SigmoidKernelF<T>, 
+                Input.data(), Output.data(), total_elements);
+        }
+        else if (Type == "softmax") {
+            blocks = dim3((batch_size + blockSize.x - 1) / blockSize.x);
+            ARCH::ExecuteKernel("Softmax", blocks, threads, 0, 0, KERNEL::SoftmaxKernelF<T>, 
+				Input.data(), Output.data(), batch_size, classDim);
+        }
+        else {
+            throw std::runtime_error("Unsupported output type");
+        }
+
     }
 };
 
-    
+
 template<FloatingTensorType T>
 class Sequential {
 private:
@@ -273,6 +258,8 @@ private:
             return;
         }
 
+		is_built_ = true;
+
         size_t max_elements_A = 0;
         size_t max_elements_B = 0;
 
@@ -304,7 +291,7 @@ private:
 
     Tensor<T>& forwardPassOptimized(const Tensor<T>& Input) {
         if (!is_built_) {
-            throw std::runtime_error("Model not built. Call build() before forward().");
+            throw std::runtime_error("Model not built. Call Compile() first.");
         }
         if (Input.shape() != InputShape) {
             throw std::invalid_argument("Input tensor shape does not match model's expected input shape.");
@@ -370,19 +357,14 @@ public:
         Layers.push_back(std::make_unique<PoolingLayer<T>>(CurrentShape, kh, kw, s, p, "avg"));
     }
 
-    void Dropout(float p) {
-        const auto& CurrentShape = getCurrentOutputShape();
-        Layers.push_back(std::make_unique<DropoutLayer<T>>(CurrentShape, p));
-    }
-
     void Dense(int outNumFeature) {
         const auto& CurrentShape = getCurrentOutputShape();
         Layers.push_back(std::make_unique<DenseLayer<T>>(CurrentShape, outNumFeature));
 	}
 
-    void Output(const std::string type) {
+    void Output() {
         const auto& CurrentShape = getCurrentOutputShape();
-        Layers.push_back(std::make_unique<OutputLayer<T>>(CurrentShape, type));
+        Layers.push_back(std::make_unique<OutputLayer<T>>(CurrentShape));
 	}
 
     void Predict(const Tensor<T>& Input) {
@@ -392,10 +374,7 @@ public:
 
     void Testing(const Tensor<T>& Input, const Tensor<T>& Label) {
         Compile();
-     /*   for () {
-            auto Predicted = forwardPassOptimized(input);
 
-        }*/
     }
 
 

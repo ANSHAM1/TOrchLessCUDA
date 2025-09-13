@@ -112,7 +112,9 @@ int main() {
 	Model.Activate("relu");
 
 	Model.Dense(10);
-	Model.Output("softmax");
+	Model.Output();
+
+    Model.Predict(ImageTrain);
 
     std::cout << "Program finished. Keeping alive for 20 seconds...\n";
     std::this_thread::sleep_for(std::chrono::seconds(20));
