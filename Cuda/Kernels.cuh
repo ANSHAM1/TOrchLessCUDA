@@ -13,19 +13,6 @@
 #include <string_view>
 #include <algorithm>
 
-template<size_t N>
-struct FixedString {
-    char data[N]{};
-
-    constexpr FixedString(const char(&str)[N]) {
-        std::copy_n(str, N, data);
-    }
-
-    constexpr operator std::string_view() const {
-        return { data, N - 1 };
-    }
-};
-
 _AM_START
 
 template<typename KernelFunc, typename... Args>
@@ -129,7 +116,7 @@ __global__ void TiledConv2dKernelF(const T* input, const T* kernel, T* output,
 
     // --- Shared Memory: A fast, programmable L1 cache for one thread block ---
     // Used to store a "tile" of the input and kernel, avoiding repeated global memory reads.
-    constexpr int PADDED_TILE_DIM = (TILE_DIM - 1) * S + KERNEL_TILE_DIM;
+    const int PADDED_TILE_DIM = (TILE_DIM - 1) * S + KERNEL_TILE_DIM;
     extern __shared__ T s_data[];
     T* s_input = s_data;
     T* s_kernel = &s_data[PADDED_TILE_DIM * PADDED_TILE_DIM];
@@ -203,88 +190,61 @@ __global__ void TiledConv2dKernelF(const T* input, const T* kernel, T* output,
 
 // -----------------------------------------------------------------------------------------------------------------------
 
-template<typename T, FixedString type>
-__global__ void ActivationKernelF(const T* Input, T* Output, size_t size) {
-    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+template<typename T>
+__global__ void ActivationReluF(const T* in, T* out, size_t n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+
+    if constexpr (std::is_same_v<T, __half>) {
+        float x = __half2float(in[i]);
+        out[i] = __float2half(x > 0.f ? x : 0.f);
+    }
+    else {
+        T x = in[i];
+        out[i] = x > T(0) ? x : T(0);
+    }
+}
+
+template<typename T>
+__global__ void ActivationSigmoidF(const T* input, T* output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= size) return;
 
-    const T value = Input[idx];
+    if constexpr (std::is_same_v<T, __half>) {
+        float x = __half2float(input[idx]);
+        float y = 1.f / (1.f + expf(-x));
+        output[idx] = __float2half(y);
+    }
+    else {
+        T x = input[idx];
+        output[idx] = T(1) / (T(1) + exp(-x));
+    }
+}
 
-    if constexpr (type == "relu") {
-        if constexpr (std::is_same_v<T, __half>)
-            Output[idx] = __hgt(value, __float2half(0.0f)) ? value : __float2half(0.0f);
-        else 
-            Output[idx] = max(value, T(0));
-    }
-    else if constexpr (type == "tanh") {
-        if constexpr (std::is_same_v<T, __half>) {
-            float val_f = __half2float(value);
-            Output[idx] = __float2half(tanhf(val_f));
-        }
-        else if constexpr (std::is_same_v<T, float>)
-            Output[idx] = tanhf(value);
-        else
-            Output[idx] = tanh(value);
-    }
-    else if constexpr (type == "sigmoid") {
-        if constexpr (std::is_same_v<T, __half>) {
-            float val_f = __half2float(value);
-            Output[idx] = __float2half(1.0f / (1.0f + expf(-val_f)));
-        }
-        else if constexpr (std::is_same_v<T, float>)
-            Output[idx] = 1.0f / (1.0f + expf(-value));
-        else
-            Output[idx] = 1.0 / (1.0 + exp(-value));
-    }
-    else
-        static_assert(false, "Unsupported activation type provided to kernel.");
+template<typename T>
+__global__ void ActivationTanhF(const T* in, T* out, size_t n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+
+    float x = std::is_same_v<T, __half> ? __half2float(in[i]) : float(in[i]);
+    float t = tanhf(x);
+    out[i] = std::is_same_v<T, __half> ? __float2half(t) : T(t);
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
 
 template<typename T>
-__global__ void MaxPool2DKernelF(
-    const T* __restrict__ Input,
-    T* __restrict__ Output,
-    int N, int C, int H, int W,
-    int Hout, int Wout,
-    int kH, int kW,
-    int Stride, int Padding)
-{
-    extern __shared__ T tile[];
+__device__ inline T NEG_INF();
 
-    int n = blockIdx.z;     // batch index
-    int c = blockIdx.y;     // channel index
+template<>
+__device__ inline float NEG_INF<float>() { return -FLT_MAX; }
 
-    int out_x = blockIdx.x * blockDim.x + threadIdx.x;
-    int out_y = threadIdx.y;
+template<>
+__device__ inline __half NEG_INF<__half>() { return __float2half(-65504.0f); }
 
-    if (out_x >= Wout || out_y >= Hout) return;
-
-    // Map to input coordinates
-    int in_x_start = out_x * Stride - Padding;
-    int in_y_start = out_y * Stride - Padding;
-
-    T maxval = -FLT_MAX;
-
-    for (int ky = 0; ky < kH; ky++) {
-        for (int kx = 0; kx < kW; kx++) {
-            int in_y = in_y_start + ky;
-            int in_x = in_x_start + kx;
-            if (in_y >= 0 && in_y < H && in_x >= 0 && in_x < W) {
-                size_t idx = ((n * C + c) * H + in_y) * W + in_x;
-                T v = Input[idx];
-                maxval = v > maxval ? v : maxval;
-            }
-        }
-    }
-
-    size_t out_idx = ((n * C + c) * Hout + out_y) * Wout + out_x;
-    Output[out_idx] = maxval;
-}
 
 template<typename T>
-__global__ void AvgPool2DKernelF(
+__global__ void MaxPool2D(
     const T* __restrict__ input,
     T* __restrict__ output,
     int N, int C, int H, int W,
@@ -295,33 +255,92 @@ __global__ void AvgPool2DKernelF(
 {
     int n = blockIdx.z;
     int c = blockIdx.y;
-    int out_row = blockIdx.x / outW;
-    int out_col = blockIdx.x % outW;
 
-    if (out_row >= outH || out_col >= outW) return;
+    int out_y = blockIdx.x / outW;
+    int out_x = blockIdx.x % outW;
 
-    int h_start = out_row * strideH - padH;
-    int w_start = out_col * strideW - padW;
+    if (out_y >= outH || out_x >= outW) return;
 
-    T sum = T(0);
-    int count = 0;
+    int h_start = out_y * strideH - padH;
+    int w_start = out_x * strideW - padW;
 
-    for (int i = 0; i < kH; ++i) {
-        int h = h_start + i;
-        if (h >= 0 && h < H) {
-            for (int j = 0; j < kW; ++j) {
-                int w = w_start + j;
-                if (w >= 0 && w < W) {
-                    int input_idx = ((n * C + c) * H + h) * W + w;
-                    sum += input[input_idx];
-                    count++;
-                }
+    T maxval = NEG_INF<T>();
+
+    for (int ky = 0; ky < kH; ++ky) {
+        int h = h_start + ky;
+        if (h < 0 || h >= H) continue;
+
+        for (int kx = 0; kx < kW; ++kx) {
+            int w = w_start + kx;
+            if (w < 0 || w >= W) continue;
+
+            int idx = ((n * C + c) * H + h) * W + w;
+            T v = input[idx];
+
+            if constexpr (std::is_same_v<T, __half>) {
+                if (__hgt(v, maxval)) maxval = v;
+            }
+            else {
+                maxval = v > maxval ? v : maxval;
             }
         }
     }
 
-    int output_idx = ((n * C + c) * outH + out_row) * outW + out_col;
-    output[output_idx] = count > 0 ? sum / count : T(0);
+    int out_idx = ((n * C + c) * outH + out_y) * outW + out_x;
+    output[out_idx] = maxval;
+}
+
+template<typename T>
+__global__ void AvgPool2D(
+    const T* __restrict__ input,
+    T* __restrict__ output,
+    int N, int C, int H, int W,
+    int outH, int outW,
+    int kH, int kW,
+    int strideH, int strideW,
+    int padH, int padW)
+{
+    int n = blockIdx.z;
+    int c = blockIdx.y;
+
+    int out_y = blockIdx.x / outW;
+    int out_x = blockIdx.x % outW;
+
+    if (out_y >= outH || out_x >= outW) return;
+
+    int h_start = out_y * strideH - padH;
+    int w_start = out_x * strideW - padW;
+
+    float sum_f = 0.f;
+    int count = 0;
+
+    for (int ky = 0; ky < kH; ++ky) {
+        int h = h_start + ky;
+        if (h < 0 || h >= H) continue;
+
+        for (int kx = 0; kx < kW; ++kx) {
+            int w = w_start + kx;
+            if (w < 0 || w >= W) continue;
+
+            int idx = ((n * C + c) * H + h) * W + w;
+
+            if constexpr (std::is_same_v<T, __half>)
+                sum_f += __half2float(input[idx]);
+            else
+                sum_f += float(input[idx]);
+
+            count++;
+        }
+    }
+
+    float out_val = (count > 0) ? (sum_f / count) : 0.f;
+
+    int out_idx = ((n * C + c) * outH + out_y) * outW + out_x;
+
+    if constexpr (std::is_same_v<T, __half>)
+        output[out_idx] = __float2half(out_val);
+    else
+        output[out_idx] = T(out_val);
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -362,17 +381,22 @@ __global__ void DenseKernelF(
 // -----------------------------------------------------------------------------------------------------------------------
 
 template<typename T>
-__global__ void SigmoidKernelF(
-    const T* __restrict__ input,   // [batch_size, 1, 1, classDim]
-    T* __restrict__ output,        // [batch_size, 1, 1, classDim]
-    int total_elements)           // batch_size * classDim
-{
+__global__ void SigmoidKernelF(const T* input, T* output, int n) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= total_elements) return;
+    if (idx >= n) return;
 
     T x = input[idx];
-    output[idx] = static_cast<T>(1) / (static_cast<T>(1) + exp(-x));
+
+    if constexpr (std::is_same_v<T, __half>) {
+        float xf = __half2float(x);
+        float yf = 1.0f / (1.0f + expf(-xf));
+        output[idx] = __float2half(yf);
+    }
+    else {
+        output[idx] = T(1) / (T(1) + exp(-x));
+    }
 }
+
 
 template<typename T>
 __global__ void SoftmaxKernelF(
@@ -389,7 +413,15 @@ __global__ void SoftmaxKernelF(
     // Step 1: Find max value for numerical stability
     T max_val = input[base_idx];
     for (int i = 1; i < classDim; ++i) {
-        max_val = max(max_val, input[base_idx + i]);
+        if constexpr (std::is_same_v<T, __half>) {
+            float a = __half2float(max_val);
+            float b = __half2float(input[base_idx + i]);
+            max_val = __float2half(fmaxf(a, b));
+        }
+        else {
+            max_val = max(max_val, input[base_idx + i]);
+        }
+
     }
 
     // Step 2: Compute exponentials and sum
