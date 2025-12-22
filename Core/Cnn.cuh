@@ -131,6 +131,9 @@ public:
 	PoolingLayer(const std::vector<size_t>& InputShape, size_t kh, size_t kw, size_t sH, size_t sW, size_t pH, size_t pW, const std::string& type)
 		: kH(kh), kW(kw), strideH(sH), strideW(sW), padH(pH), padW(pW), Type(type) {
 
+		if (strideH == 0 || strideW == 0)
+			throw std::invalid_argument("Stride cannot be zero");
+
 		if (type != "max" && type != "avg")
 			throw std::runtime_error("Invalid pooling type");
 
@@ -307,9 +310,19 @@ private:
 		if (!is_built_) {
 			throw std::runtime_error("Model not built. Call Compile() first.");
 		}
-		if (Input.shape() != InputShape) {
-			throw std::invalid_argument("Input tensor shape does not match model's expected input shape.");
+		
+		if (Input.shape().size() != 4) {
+			throw std::invalid_argument("Input must be 4D tensor (N,C,H,W)");
 		}
+
+		if (Input.shape()[1] != InputShape[1] ||
+			Input.shape()[2] != InputShape[2] ||
+			Input.shape()[3] != InputShape[3]) {
+			throw std::invalid_argument(
+				"Input tensor C,H,W must match model input shape"
+			);
+		}
+
 
 		const Tensor<T>* source = &Input;
 		Tensor<T>* destination = &workspace_B_;
@@ -381,9 +394,9 @@ public:
 		Layers.push_back(std::make_unique<OutputLayer<T>>(CurrentShape));
 	}
 
-	void Predict(const Tensor<T>& Input) {
+	Tensor<T>& Predict(Tensor<T>& Input) {
 		Compile();
-		Tensor<T>& Predicted = forwardPassOptimized(Input);
+		return forwardPassOptimized(Input);
 	}
 
 	void Testing(const Tensor<T>& Input, const Tensor<T>& Label) {
@@ -391,54 +404,55 @@ public:
 
 	}
 
-
-
-
-	//    shared_ptr<BatchWrapper> CONFUSION_MATRIX;
-	//    float ACCURACY;
-	//    vector<float> PRECISION, RECALL, F1;
-	//
-	//    int NUM_BATCHS;
-	//
-	//    vector<shared_ptr<BatchWrapper>> BWs;
-	//    vector<shared_ptr<Layer>> LAYERS;
-	//
-	//    vector<shared_ptr<BatchWrapper>> TestBWs;
-	//    vector<shared_ptr<Layer>> TestLAYERS;
-	//
-	//    bool isTrained = false;
-	//    bool isTested = false;
-	//
-	//    void Input(int b, int c, int h, int w, int miniBatchSize);
-	//    void Conv2D(int out_channels, int in_channels, int kernel_h, int kernel_w, int stride, int padding);
-	//    void Activation(const string& type);
-	//    void Pooling(int kHeight, int kWidth, int stride, int padding, const string& type);
-	//    void BatchNorm();
-	//    void Dropout(float p);
-	//    void Dense(int NumFeatures);
-	//
-	//private:
-	//    shared_ptr<OutputLayer> OutputprivateLayer(const vector<vector<vector<vector<float>>>>& miniBatch);
-	//
-	//public:
-	//    void Train(const vector<vector<vector<vector<float>>>>& inputs, const vector<vector<vector<vector<float>>>>& labels,
-	//        int epochs, float lr, float R2, float clipGrad);
-	//
-	//    void Test(const vector<vector<vector<vector<float>>>>& tensor, const vector<vector<vector<vector<float>>>>& labels);
-	//    vector<int> Predict(const vector<vector<vector<vector<float>>>>& tensor);
-	//    void showEvaluation();
-	//
-	//
-	//private:
-	//    vector<int> TP, TN, FP, FN;
-	//
-	//    vector<vector<vector<vector<float>>>> getMiniBatch(const vector<vector<vector<vector<float>>>>& batch, int idx) const;
-	//
-	//    void calculateTP_FP_FN_TN(vector<float> matrix, int C);
-	//    void Evaluate();
 };
 
 
 _AM_END
 
 #endif // !__CNN_ARCH__
+
+
+
+
+//    shared_ptr<BatchWrapper> CONFUSION_MATRIX;
+//    float ACCURACY;
+//    vector<float> PRECISION, RECALL, F1;
+//
+//    int NUM_BATCHS;
+//
+//    vector<shared_ptr<BatchWrapper>> BWs;
+//    vector<shared_ptr<Layer>> LAYERS;
+//
+//    vector<shared_ptr<BatchWrapper>> TestBWs;
+//    vector<shared_ptr<Layer>> TestLAYERS;
+//
+//    bool isTrained = false;
+//    bool isTested = false;
+//
+//    void Input(int b, int c, int h, int w, int miniBatchSize);
+//    void Conv2D(int out_channels, int in_channels, int kernel_h, int kernel_w, int stride, int padding);
+//    void Activation(const string& type);
+//    void Pooling(int kHeight, int kWidth, int stride, int padding, const string& type);
+//    void BatchNorm();
+//    void Dropout(float p);
+//    void Dense(int NumFeatures);
+//
+//private:
+//    shared_ptr<OutputLayer> OutputprivateLayer(const vector<vector<vector<vector<float>>>>& miniBatch);
+//
+//public:
+//    void Train(const vector<vector<vector<vector<float>>>>& inputs, const vector<vector<vector<vector<float>>>>& labels,
+//        int epochs, float lr, float R2, float clipGrad);
+//
+//    void Test(const vector<vector<vector<vector<float>>>>& tensor, const vector<vector<vector<vector<float>>>>& labels);
+//    vector<int> Predict(const vector<vector<vector<vector<float>>>>& tensor);
+//    void showEvaluation();
+//
+//
+//private:
+//    vector<int> TP, TN, FP, FN;
+//
+//    vector<vector<vector<vector<float>>>> getMiniBatch(const vector<vector<vector<vector<float>>>>& batch, int idx) const;
+//
+//    void calculateTP_FP_FN_TN(vector<float> matrix, int C);
+//    void Evaluate();
