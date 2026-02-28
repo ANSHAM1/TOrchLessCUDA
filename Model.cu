@@ -114,9 +114,9 @@ int main() {
 	Model.Dense(10);
 	Model.Output();
 
-	auto& p = Model.Predict(ImageTrain);
+	//auto& p = Model.Predict(ImageTrain);
 
-	std::cout << "Prediction shape: " << p.shape()[0] << std::endl;
+	//std::cout << "Prediction shape: " << p.shape()[0] << std::endl;
 
 	std::cout << "Program finished. Keeping alive for 20 seconds...\n";
 	std::this_thread::sleep_for(std::chrono::seconds(20));
