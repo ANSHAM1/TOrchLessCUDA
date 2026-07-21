@@ -1,0 +1,81 @@
+## Ignore Visual Studio temporary files, build results, and user-specific files
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio Installer files
+*.vsix
+*.vsixmanifest
+
+# Visual Studio working folder
+.vs/
+
+# NuGet packages
+*.nupkg
+# The packages folder can be ignored if you use package restore
+packages/
+# Uncomment if using NuGet Package Restore
+# !packages/*.dll
+# !packages/*.xml
+
+# Microsoft Azure build artifacts
+csx/
+*.build.csdef
+
+# Others
+*.dbmdl
+*.bak
+*.cache
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+
+# Rider and JetBrains IDEs
+.idea/
+*.sln.iml
+
+# IIS Express
+/.vsconfig
+/.vscode/
+
+# Node.js tools for Visual Studio
+node_modules/
+
+# Python tools for Visual Studio
+__pycache__/
+*.pyc
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# VS Code settings
+.vscode/
+
+
+nvtx3/
