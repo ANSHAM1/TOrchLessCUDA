@@ -15,6 +15,7 @@ target_include_directories(app PRIVATE
     "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/include"
 )
 
+
 set_target_properties(app PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
