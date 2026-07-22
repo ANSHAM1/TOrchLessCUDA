@@ -5,7 +5,6 @@
 #include <cuda_runtime.h>
 #include "device_launch_parameters.h"
 
-
 __global__ void addKernel(
     const int* a,
     const int* b,
@@ -81,7 +80,6 @@ void vectorAdd(
     );
 
 
-    // Free GPU memory
     cudaFree(dev_a);
     cudaFree(dev_b);
     cudaFree(dev_c);
