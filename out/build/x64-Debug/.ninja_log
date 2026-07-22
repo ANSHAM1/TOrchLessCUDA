@@ -1,0 +1,8 @@
+# ninja log v6
+26	7963	8064488914252574	CMakeFiles/app.dir/src/kernel.cu.obj	2af20568ae57c7fe
+14	1311	8064488914132468	CMakeFiles/app.dir/src/main.cpp.obj	4ce399aa1df0b049
+7963	8912	8064488993630211	app.exe	e4209542acda1657
+16	1261	8064494412891503	CMakeFiles/app.dir/src/main.cpp.obj	f9925d7b3e31e268
+28	8319	8064494413011459	CMakeFiles/app.dir/src/kernel.cu.obj	54f0ea60eae6b5cc
+8320	11338	8064494495926440	CMakeFiles/app.dir/cmake_device_link.obj	d87fc1751b7b853c
+11339	11795	8064494526121489	app.exe	12c7863dc5ccfa39
