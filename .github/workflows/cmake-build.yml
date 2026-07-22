@@ -1,0 +1,39 @@
+name: CMake Build
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # Download repository code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+
+    # Install CUDA compiler
+    - name: Setup CUDA
+      uses: Jimver/cuda-toolkit@v0.2.24
+      with:
+        cuda: '12.6'
+
+
+    # Configure CMake
+    - name: Configure CMake
+      run: cmake -B build -S .
+
+
+    # Build project
+    - name: Build
+      run: cmake --build build --config Release
