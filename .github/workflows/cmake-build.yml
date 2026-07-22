@@ -23,10 +23,10 @@ jobs:
       uses: actions/checkout@v4
 
 
-    - name: Install CUDA Toolkit
+    - name: Setup CUDA
       uses: Jimver/cuda-toolkit@v0.2.24
       with:
-        cuda: '12.6'
+        cuda: '12.6.0'
 
 
     - name: Check CUDA
@@ -38,4 +38,4 @@ jobs:
 
 
     - name: Build
-      run: cmake --build build
+      run: cmake --build build --config Release
