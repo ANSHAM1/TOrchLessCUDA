@@ -20,6 +20,8 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+out/
+
 # Visual Studio Installer files
 *.vsix
 *.vsixmanifest
