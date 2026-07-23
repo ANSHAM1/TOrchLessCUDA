@@ -253,6 +253,7 @@ public:
         storage_.allocate(numel());
     }
 
+    [[nodiscard]]
     float* offset_ptr(size_t offset = 0) {
         if (offset >= storage_.size())
             throw std::out_of_range(
@@ -263,6 +264,7 @@ public:
         return storage_.ptr() + offset;
     }
 
+    [[nodiscard]]
     const float* offset_ptr(size_t offset = 0) const {
         if (offset >= storage_.size())
             throw std::out_of_range(
@@ -291,51 +293,27 @@ public:
         tensorAssignRandom(data(), numel(), seed);
     }
 
-
-
-
-    void* raw_ptr() noexcept
-    {
+    [[nodiscard]]
+    void* raw_ptr() noexcept {
         return static_cast<void*>(data());
     }
 
-
-
-    const void* raw_ptr() const noexcept
-    {
+    [[nodiscard]]
+    const void* raw_ptr() const noexcept {
         return static_cast<const void*>(data());
     }
 
 
+    void debug_print(const char* name = "") const {
+        std::cerr << "[Tensor " << name << "] shape=(";
 
-
-    void debug_print(
-        const char* name = ""
-    ) const
-    {
-
-        std::cerr
-            << "[Tensor "
-            << name
-            << "] shape=(";
-
-
-        for (size_t i = 0; i < shape_.size(); ++i)
-        {
+        for (size_t i = 0; i < shape_.size(); ++i) {
             if (i)
                 std::cerr << ",";
-
 
             std::cerr << shape_[i];
         }
 
-
-        std::cerr
-            << ") numel="
-            << numel()
-            << " bytes="
-            << numel() * sizeof(float)
-            << "\n";
+        std::cerr << ") numel=" << numel() << " bytes=" << numel() * sizeof(float) << "\n";
     }
-
 };
