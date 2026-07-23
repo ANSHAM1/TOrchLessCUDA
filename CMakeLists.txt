@@ -5,6 +5,8 @@ project(TorchLess LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CUDA_STANDARD 20)
 
+find_package(CUDAToolkit REQUIRED)
+
 add_executable(app
     main.cpp
     src/tensor.cpp
@@ -14,9 +16,11 @@ add_executable(app
 
 target_include_directories(app PRIVATE
     include
-    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/include",
 )
 
+target_link_libraries(app PRIVATE
+    CUDA::cudart
+)
 
 set_target_properties(app PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
