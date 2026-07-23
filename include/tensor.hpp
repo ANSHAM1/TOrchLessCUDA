@@ -68,10 +68,23 @@ private:
 
     Storage storage_;
 
+    float* data_ptr_ = nullptr;
+
     std::vector<size_t> shape_;
     std::vector<size_t> strides_;
 
+    bool is_view_ = false;
+
+private:
+
+    explicit Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides);
+
 public:
+
+    static size_t shape_product(const std::vector<size_t>& shape);
+
+    static std::vector<size_t> compute_strides(const std::vector<size_t>& shape);
+
 
     Tensor() = default;
 
@@ -89,7 +102,12 @@ public:
 
     Tensor& operator=(const Tensor&) = delete;
 
+    void allocate(const std::vector<size_t>& shape);
+
     static Tensor zeros(const std::vector<size_t>& shape);
+
+    [[nodiscard]]
+    Tensor view(const std::vector<size_t>& new_shape) const;
 
     [[nodiscard]]
     const std::vector<size_t>& shape() const;
@@ -112,7 +130,10 @@ public:
     [[nodiscard]]
     const float* data() const noexcept;
 
-    void resize(const std::vector<size_t>& new_shape);
+    [[nodiscard]]
+    bool is_view() const noexcept;
+
+    void reshape(const std::vector<size_t>& new_shape);
 
     [[nodiscard]]
     float* offset_ptr(size_t offset = 0);

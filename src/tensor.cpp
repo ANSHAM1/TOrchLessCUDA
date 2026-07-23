@@ -4,40 +4,6 @@
 #include <numeric>
 #include <functional>
 
-// ============================================================
-// Utility Functions
-// ============================================================
-
-inline static size_t shape_product(const std::vector<size_t>& shape) {
-    if (shape.empty())
-        return 0;
-
-    return std::accumulate(
-        shape.begin(),
-        shape.end(),
-        size_t(1),
-        std::multiplies<size_t>()
-    );
-}
-
-
-inline static std::vector<size_t> compute_strides(const std::vector<size_t>& shape) {
-    std::vector<size_t> strides(shape.size());
-
-    if (shape.empty())
-        return strides;
-
-
-    strides.back() = 1;
-
-    for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i)
-    {
-        strides[i] = strides[i + 1] * shape[i + 1];
-    }
-
-    return strides;
-}
-
 
 
 // ============================================================
@@ -129,6 +95,44 @@ Storage::~Storage() {
 // Tensor
 // ============================================================
 
+size_t Tensor::shape_product(const std::vector<size_t>& shape) {
+    if (shape.empty())
+        return 0;
+
+    return std::accumulate(
+        shape.begin(),
+        shape.end(),
+        size_t(1),
+        std::multiplies<size_t>()
+    );
+}
+
+
+std::vector<size_t> Tensor::compute_strides(const std::vector<size_t>& shape) {
+    std::vector<size_t> strides(shape.size());
+
+    if (shape.empty())
+        return strides;
+
+
+    strides.back() = 1;
+
+    for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i)
+    {
+        strides[i] = strides[i + 1] * shape[i + 1];
+    }
+
+    return strides;
+}
+
+
+Tensor::Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides)
+    : data_ptr_(ptr), shape_(shape), strides_(strides), is_view_(true) {
+
+    if (ptr == nullptr)
+        throw std::runtime_error("Cannot create view from null pointer");
+}
+
 
 Tensor::Tensor(const std::vector<size_t>& shape)
     : shape_(shape), strides_(compute_strides(shape)) {
@@ -161,8 +165,11 @@ Tensor::Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from
 
 
 // Move Constructor
-Tensor::Tensor(Tensor&& other) noexcept
-    : storage_(std::move(other.storage_)), shape_(std::move(other.shape_)), strides_(std::move(other.strides_)) {
+Tensor::Tensor(Tensor&& other) noexcept : storage_(std::move(other.storage_)), data_ptr_(other.data_ptr_), 
+    shape_(std::move(other.shape_)), strides_(std::move(other.strides_)), is_view_(other.is_view_) {
+
+    other.data_ptr_ = nullptr;
+    other.is_view_ = false;
 }
 
 
@@ -171,11 +178,32 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
     if (this != &other) {
         storage_ = std::move(other.storage_);
 
+        data_ptr_ = other.data_ptr_;
         shape_ = std::move(other.shape_);
         strides_ = std::move(other.strides_);
+
+        is_view_ = other.is_view_;
+
+
+        other.data_ptr_ = nullptr;
+        other.is_view_ = false;
     }
 
     return *this;
+}
+
+
+void Tensor::allocate(const std::vector<size_t>& shape) {
+    if (is_view_)
+        throw std::runtime_error("Cannot allocate memory for a Tensor view");
+
+    size_t required = shape_product(shape);
+
+    if (required > storage_.size())
+        storage_.allocate(required);
+
+    shape_ = shape;
+    strides_ = compute_strides(shape_);
 }
 
 
@@ -190,6 +218,15 @@ Tensor Tensor::zeros(const std::vector<size_t>& shape) {
     );
 
     return t;
+}
+
+
+[[nodiscard]]
+Tensor Tensor::view(const std::vector<size_t>& new_shape) const {
+    if (shape_product(new_shape) != numel())
+        throw std::runtime_error("Invalid view shape");
+    
+    return Tensor(const_cast<float*>(data()), new_shape, compute_strides(new_shape));
 }
 
 
@@ -219,38 +256,53 @@ size_t Tensor::numel() const noexcept {
 
 [[nodiscard]]
 bool Tensor::allocated() const noexcept {
-    return storage_.size() > 0;
+    return is_view_ || storage_.size() > 0;
 }
 
 
 [[nodiscard]]
 float* Tensor::data() noexcept {
+    if (is_view_)
+        return data_ptr_;
+
     return storage_.ptr();
 }
 
 
 [[nodiscard]]
 const float* Tensor::data() const noexcept {
+    if (is_view_)
+        return data_ptr_;
+
     return storage_.ptr();
 }
 
 
-void Tensor::resize(const std::vector<size_t>& new_shape) {
+[[nodiscard]]
+bool Tensor::is_view() const noexcept {
+    return is_view_;
+}
+
+
+void Tensor::reshape(const std::vector<size_t>& new_shape) {
+    size_t required = shape_product(new_shape);
+
+    size_t available = is_view_ ? numel() : storage_.size();
+
+    if (required > available)
+        throw std::runtime_error("Tensor::reshape(): insufficient memory.");
+    
     shape_ = new_shape;
-
     strides_ = compute_strides(shape_);
-
-    storage_.allocate(numel());
 }
 
 
 [[nodiscard]]
 float* Tensor::offset_ptr(size_t offset) {
-    if (offset >= storage_.size())
+    if (offset >= numel())
         throw std::out_of_range(
             "Tensor offset out of range"
         );
-
 
     return storage_.ptr() + offset;
 }
@@ -258,11 +310,10 @@ float* Tensor::offset_ptr(size_t offset) {
 
 [[nodiscard]]
 const float* Tensor::offset_ptr(size_t offset) const {
-    if (offset >= storage_.size())
+    if (offset >= numel())
         throw std::out_of_range(
             "Tensor offset out of range"
         );
-
 
     return storage_.ptr() + offset;
 }

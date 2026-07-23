@@ -11,7 +11,9 @@ add_executable(app
     main.cpp
     src/tensor.cpp
     src/util_kernels.cu
-    src/modules/layer.cpp
+    src/modules/Sequentia.cpp
+    src/modules/ActivationLayer.cpp 
+    src/modules/FlattenLayer.cpp
 )
 
 target_include_directories(app PRIVATE
