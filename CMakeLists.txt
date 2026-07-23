@@ -7,8 +7,9 @@ set(CMAKE_CUDA_STANDARD 20)
 
 add_executable(app
     main.cpp
-    src/tensor.cu
+    src/tensor.cpp
     src/util_kernels.cu
+    src/modules/layer.cpp
 )
 
 target_include_directories(app PRIVATE

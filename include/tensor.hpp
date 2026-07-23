@@ -1,0 +1,136 @@
+#pragma once
+
+#include "macros.hpp"
+#include "kernel.cuh"
+
+#include "cuda_runtime.h"
+
+#include <vector>
+#include <utility>
+#include <stdexcept>
+#include <new>
+
+
+// ============================================================
+// CUDA Memory Storage
+// ============================================================
+
+class Storage {
+private:
+
+    float* ptr_;
+    size_t count_;
+
+public:
+
+    Storage() noexcept;
+
+    // Move Constructor
+    Storage(Storage&& other) noexcept;
+
+    // Move Assignment
+    Storage& operator=(Storage&& other) noexcept;
+
+    void allocate(size_t count);
+
+    void release() noexcept;
+
+    /*
+        * [[nodiscard]] is a C++17 attribute (also in C++20/23) that tells the compiler:
+        * If the return value of this function (or type) is ignored(not assigned to variable), issue a warning.
+    */
+
+    [[nodiscard]]
+    float* ptr() noexcept;
+
+    [[nodiscard]]
+    const float* ptr() const noexcept;
+
+    [[nodiscard]]
+    size_t size() const noexcept;
+
+    Storage(const Storage&) = delete;
+
+    Storage& operator=(const Storage&) = delete;
+
+    ~Storage();
+};
+
+
+
+
+// ============================================================
+// Tensor
+// ============================================================
+
+class Tensor {
+private:
+
+    Storage storage_;
+
+    std::vector<size_t> shape_;
+    std::vector<size_t> strides_;
+
+public:
+
+    Tensor() = default;
+
+    explicit Tensor(const std::vector<size_t>& shape);
+
+    explicit Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from_host = true);
+
+    // Move Constructor
+    Tensor(Tensor&& other) noexcept;
+
+    // Move Assignment
+    Tensor& operator=(Tensor&& other) noexcept;
+
+    Tensor(const Tensor&) = delete;
+
+    Tensor& operator=(const Tensor&) = delete;
+
+    static Tensor zeros(const std::vector<size_t>& shape);
+
+    [[nodiscard]]
+    const std::vector<size_t>& shape() const;
+
+    [[nodiscard]]
+    const std::vector<size_t>& strides() const;
+
+    [[nodiscard]]
+    size_t dim() const noexcept;
+
+    [[nodiscard]]
+    size_t numel() const noexcept;
+
+    [[nodiscard]]
+    bool allocated() const noexcept;
+
+    [[nodiscard]]
+    float* data() noexcept;
+
+    [[nodiscard]]
+    const float* data() const noexcept;
+
+    void resize(const std::vector<size_t>& new_shape);
+
+    [[nodiscard]]
+    float* offset_ptr(size_t offset = 0);
+
+    [[nodiscard]]
+    const float* offset_ptr(size_t offset = 0) const;
+
+    void fill(float value);
+
+    void randomTensor(unsigned long long seed);
+
+    [[nodiscard]]
+    void* raw_ptr() noexcept;
+
+    [[nodiscard]]
+    const void* raw_ptr() const noexcept;
+
+    void debug_print(const char* name = "") const;
+
+    ~Tensor() = default;
+};
