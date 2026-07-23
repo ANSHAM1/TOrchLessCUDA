@@ -1,5 +1,6 @@
 ﻿//#include "../../include/kernel.cuh"
 #include "../../include/template.cuh"
+#include "../macros.cu"
 
 //#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
