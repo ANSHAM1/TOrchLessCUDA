@@ -1,5 +1,7 @@
 #pragma once
 
-void tensorAssign(float* ptr, size_t value, size_t n);
+#include <cstddef>
 
-void tensorAssignRandom(float* data, size_t size, unsigned long long seed);
+void tensorAssign(float* ptr, std::size_t value, std::size_t n);
+
+void tensorAssignRandom(float* data, std::size_t size, unsigned long long seed);
