@@ -1,12 +1,15 @@
 #include "../macros.hpp"
-#include "../include/kernel.cuh"
+#include "kernel.cuh"
 
 #include "cuda_runtime.h"
 
 #include <iostream>
 #include <vector>
 #include <numeric>
+#include <functional>
+#include <utility>
 #include <stdexcept>
+#include <new>
 
 
 // ============================================================
@@ -98,7 +101,6 @@ public:
     void release() noexcept {
         if (ptr_) {
             cudaFree(ptr_);
-
             ptr_ = nullptr;
             count_ = 0;
         }
@@ -145,10 +147,10 @@ private:
 
     Storage storage_;
 
-public:
-
     std::vector<size_t> shape_;
     std::vector<size_t> strides_;
+
+public:
 
     Tensor() = default;
 
@@ -172,11 +174,11 @@ public:
 
         if (from_host)
             CUDA_CHECK(
-                cudaMemcpyAsync(storage_.ptr(), raw_ptr, n * sizeof(float), cudaMemcpyHostToDevice, 0);
+                cudaMemcpy(storage_.ptr(), raw_ptr, n * sizeof(float), cudaMemcpyHostToDevice);
             );
         else
             CUDA_CHECK(
-                cudaMemcpyAsync(storage_.ptr(), raw_ptr, n * sizeof(float), cudaMemcpyDeviceToDevice, 0);
+                cudaMemcpy(storage_.ptr(), raw_ptr, n * sizeof(float), cudaMemcpyDeviceToDevice);
             );
     }
 
@@ -209,12 +211,21 @@ public:
             return t;
 
         CUDA_CHECK(
-            cudaMemsetAsync(t.data(), 0, t.numel() * sizeof(float), 0);
+            cudaMemset(t.data(), 0, t.numel() * sizeof(float));
         );
 
         return t;
     }
 
+    [[nodiscard]]
+    const std::vector<size_t>& shape() const {
+        return shape_;
+    }
+
+    [[nodiscard]]
+    const std::vector<size_t>& strides() const {
+        return strides_;
+    }
 
     [[nodiscard]]
     size_t dim() const noexcept {
@@ -280,7 +291,7 @@ public:
 
         if (value == 0.0f)
             CUDA_CHECK(
-                cudaMemsetAsync(data(), 0, n * sizeof(float), 0);
+                cudaMemset(data(), 0, n * sizeof(float));
             );
         else
             tensorAssign(data(), value, n);
