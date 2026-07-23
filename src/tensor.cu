@@ -1,5 +1,5 @@
 #include "../macros.hpp"
-#include "../../include/kernel.cuh"
+#include "../include/kernel.cuh"
 
 #include "cuda_runtime.h"
 
@@ -152,7 +152,7 @@ public:
 
     Tensor() = default;
 
-    explicit Tensor(const std::vector<size_t>& shape, cudaStream_t stream = 0) 
+    explicit Tensor(const std::vector<size_t>& shape) 
         : shape_(shape), strides_(compute_strides(shape)) {
 
         size_t n = numel();
@@ -161,7 +161,7 @@ public:
             storage_.allocate(n);
     }
 
-    explicit Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from_host = true, cuda)
+    explicit Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from_host = true)
         : shape_(shape), strides_(compute_strides(shape)) {
 
         if (raw_ptr == nullptr)
@@ -182,10 +182,7 @@ public:
 
     // Move Constructor
     Tensor(Tensor&& other) noexcept
-        : storage_(std::move(other.storage_)), shape_(std::move(other.shape_)), strides_(std::move(other.strides_)) {
-
-        other.stream_ = 0;
-    }
+        : storage_(std::move(other.storage_)), shape_(std::move(other.shape_)), strides_(std::move(other.strides_)) {}
 
     // Move Assignment
     Tensor& operator=(Tensor&& other) noexcept {
