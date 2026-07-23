@@ -1,5 +1,4 @@
-﻿//#include "../../include/kernel.cuh"
-#include "../../include/template.cuh"
+﻿#include "template.cuh"
 
 #include "device_launch_parameters.h"
 #include <curand_kernel.h>

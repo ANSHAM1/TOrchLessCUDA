@@ -1,4 +1,4 @@
-#include "../macros.hpp"
+#include "macros.hpp"
 #include "kernel.cuh"
 
 #include "cuda_runtime.h"
