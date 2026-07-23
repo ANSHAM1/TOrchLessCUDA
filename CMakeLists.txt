@@ -6,8 +6,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CUDA_STANDARD 20)
 
 add_executable(app
+    macros.hpp
     src/main.cpp
-    src/macros.cu
+    src/tensor.cu
     src/kernels/kernel.cu
 )
 

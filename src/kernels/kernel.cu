@@ -1,75 +1,46 @@
 ﻿//#include "../../include/kernel.cuh"
 #include "../../include/template.cuh"
-#include "../macros.cu"
 
-//#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
+#include <curand_kernel.h>
 
 
-__global__ void addKernel(const int* a, const int* b, int* c, int size) {
-    int index = threadIdx.x + blockIdx.x * blockDim.x;
 
-    if (index < size)
-    {
-        c[index] = a[index] + b[index];
-    }
+__global__ void tensorAssignKernel(float* data, float value, size_t size) {
+    size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+
+    if (idx < size) data[idx] = value;
 }
 
-void vectorAdd(
-    const int* a,
-    const int* b,
-    int* c,
-    int size
-)
-{
-    int* dev_a;
-    int* dev_b;
-    int* dev_c;
+void tensorAssign(float* ptr, size_t value, size_t n) {
+    dim3 blocks((n + 255) / 256);
+    dim3 threads(256);
+
+    ExecuteKernel("tensorAssignKernel", blocks, threads, 0, 0, tensorAssignKernel, ptr, value, n);
+}
 
 
-    // Allocate GPU memory
-    cudaMalloc(&dev_a, size * sizeof(int));
-    cudaMalloc(&dev_b, size * sizeof(int));
-    cudaMalloc(&dev_c, size * sizeof(int));
 
 
-    // Copy CPU -> GPU
-    cudaMemcpy(
-        dev_a,
-        a,
-        size * sizeof(int),
-        cudaMemcpyHostToDevice
-    );
+__global__ void tensorAssignRandomKernel(float* data, size_t size, unsigned long long seed) {
+    size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-    cudaMemcpy(
-        dev_b,
-        b,
-        size * sizeof(int),
-        cudaMemcpyHostToDevice
-    );
+    if (idx >= size)
+        return;
 
+    curandStatePhilox4_32_10_t state;
 
-    // Launch kernel
-    int threads = 256;
-    int blocks = (size + threads - 1) / threads;
+    curand_init(seed, idx, 0,&state);
 
+    data[idx] = curand_uniform(&state);
+}
 
-    ExecuteKernel("add kernel", blocks, threads, 0, 0, addKernel, dev_a, dev_b, dev_c, size);
+void tensorAssignRandom(float* data, size_t size, unsigned long long seed) {
+    if (size == 0)
+        return;
 
+    int threads(256);
+    int blocks((size + threads - 1) / threads);
 
-    cudaDeviceSynchronize();
-
-
-    // Copy GPU -> CPU
-    cudaMemcpy(
-        c,
-        dev_c,
-        size * sizeof(int),
-        cudaMemcpyDeviceToHost
-    );
-
-
-    cudaFree(dev_a);
-    cudaFree(dev_b);
-    cudaFree(dev_c);
+    ExecuteKernel("tensorAssignRandomKernel", blocks, threads, 0, 0, tensorAssignKernel, data, size, seed);
 }

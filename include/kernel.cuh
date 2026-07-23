@@ -1,9 +1,5 @@
 #pragma once
 
+void tensorAssign(float* ptr, size_t value, size_t n);
 
-void vectorAdd(
-    const int* a,
-    const int* b,
-    int* c,
-    int size
-);
+void tensorAssignRandom(float* data, size_t size, unsigned long long seed);
