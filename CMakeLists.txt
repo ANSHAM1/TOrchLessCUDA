@@ -7,12 +7,12 @@ set(CMAKE_CUDA_STANDARD 20)
 
 add_executable(app
     src/main.cpp
-    src/kernel.cu
+    src/kernels/kernel.cu
 )
 
 target_include_directories(app PRIVATE
     include
-    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/include"
+    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6/include",
 )
 
 

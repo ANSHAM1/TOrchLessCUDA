@@ -1,25 +1,18 @@
-﻿#include "../include/kernel.cuh"
+﻿//#include "../../include/kernel.cuh"
+#include "../../include/template.cuh"
 
-#include <iostream>
-
-#include <cuda_runtime.h>
+//#include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-__global__ void addKernel(
-    const int* a,
-    const int* b,
-    int* c,
-    int size
-)
-{
+
+__global__ void addKernel(const int* a, const int* b, int* c, int size) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
 
-    if(index < size)
+    if (index < size)
     {
         c[index] = a[index] + b[index];
     }
 }
-
 
 void vectorAdd(
     const int* a,
@@ -60,12 +53,7 @@ void vectorAdd(
     int blocks = (size + threads - 1) / threads;
 
 
-    addKernel<<<blocks, threads>>>(
-        dev_a,
-        dev_b,
-        dev_c,
-        size
-    );
+    ExecuteKernel("add kernel", blocks, threads, 0, 0, addKernel, dev_a, dev_b, dev_c, size);
 
 
     cudaDeviceSynchronize();
