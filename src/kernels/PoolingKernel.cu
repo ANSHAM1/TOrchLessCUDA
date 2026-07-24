@@ -5,6 +5,7 @@
 
 #include "device_launch_parameters.h"
 #include <limits>
+#include <cfloat>
 
 
 
