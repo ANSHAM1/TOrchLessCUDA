@@ -2,15 +2,15 @@
 
 
 
-FlattenLayer::FlattenLayer(const std::vector<size_t>& InputShape) {
-    if (InputShape.size() < 2)
+FlattenLayer::FlattenLayer(const std::vector<size_t>& inputShape) {
+    if (inputShape.size() < 2)
         throw std::invalid_argument("Flatten requires input dimension >= 2");
 
-    size_t Batch = InputShape[0];
+    size_t Batch = inputShape[0];
 
     size_t Features = 1;
-    for (size_t i = 1; i < InputShape.size(); i++)
-        Features *= InputShape[i];
+    for (size_t i = 1; i < inputShape.size(); i++)
+        Features *= inputShape[i];
 
     OutputShape = { Batch, Features };
 }

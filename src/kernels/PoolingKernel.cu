@@ -186,13 +186,13 @@ __global__ void maxPoolingBackwardKernel(const float* input, const float* gradOu
 }
 
 
-__global__ void avgPoolingBackwardKernel(const float* gradOutput, float* gradInput, size_t Batch, size_t Channels, 
+__global__ void avgPoolingBackwardKernel(const float* gradOutput, float* gradInput, size_t Batch, size_t Channels,
     size_t InputHeight, size_t InputWidth, size_t OutputHeight, size_t OutputWidth, size_t KernelHeight, size_t KernelWidth,
     size_t StrideHeight, size_t StrideWidth, size_t PaddingHeight, size_t PaddingWidth) {
-    
+
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-    size_t total = Batch * Channels * OutputHeight * OutputWidth;
+    size_t total = Batch * Channels * InputHeight * InputWidth;
     if (idx >= total)
         return;
 
@@ -204,19 +204,30 @@ __global__ void avgPoolingBackwardKernel(const float* gradOutput, float* gradInp
 
     float gradient = 0.0f;
 
-    float scale = 1.0f / (KernelHeight * KernelWidth);
 
     for (size_t oh = 0; oh < OutputHeight; oh++) {
         for (size_t ow = 0; ow < OutputWidth; ow++) {
             int startH = oh * StrideHeight - PaddingHeight;
-            int startW = ow * StrideWidth -  PaddingWidth;
+            int startW = ow * StrideWidth - PaddingWidth;
 
             if (h < startH || h >= startH + KernelHeight || w < startW || w >= startW + KernelWidth)
                 continue;
 
+            size_t count = 0;
+
+            for (size_t kh = 0; kh < KernelHeight; kh++) {
+                for (size_t kw = 0; kw < KernelWidth; kw++) {
+                    int ih = startH + kh;
+                    int iw = startW + kw;
+
+                    if (ih >= 0 && iw >= 0 && ih < InputHeight && iw < InputWidth)
+                        count++;
+                }
+            }
+
             size_t outputIndex = ((n * Channels + c) * OutputHeight + oh) * OutputWidth + ow;
 
-            gradient += gradOutput[outputIndex] * scale;
+            gradient += gradOutput[outputIndex] / count;
         }
     }
 

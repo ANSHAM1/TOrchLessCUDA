@@ -127,10 +127,10 @@ inline Tensor load_mnist_images(
 }
 
 
-inline Tensor load_mnist_labels(
-    const std::string& path)
-{
 
+
+inline Tensor load_mnist_labels(const std::string& path)
+{
     std::ifstream file(
         path,
         std::ios::binary
@@ -171,7 +171,7 @@ inline Tensor load_mnist_labels(
 
 
 
-    std::vector<float> labels(count * 10, 0.0f);
+    std::vector<int> labels(count);
 
 
     for (size_t i = 0; i < count; i++)
@@ -185,18 +185,24 @@ inline Tensor load_mnist_labels(
         );
 
 
-        labels[i * 10 + label] = 1.0f;
+        labels[i] = static_cast<int>(label);
     }
 
 
 
-    return Tensor(
+    Tensor TensorLabels(
         {
-            count,
-            10,
-            1,
-            1
+            count
         },
-        labels.data()
+        DataType::Int32
     );
+
+
+    TensorLabels.copyFromHost(
+        labels.data(),
+        count
+    );
+
+
+    return TensorLabels;
 }

@@ -1,6 +1,6 @@
 #include "layer.hpp"
 
-
+#include <iostream>
 
 
 // Compile Inference
@@ -31,7 +31,7 @@ void Sequential::compileInference(ExecutionContext& Context) {
 }
 
 
-Tensor& Sequential::inference(ExecutionContext& Context, const Tensor& Input) {
+Tensor& Sequential::forwardInference(ExecutionContext& Context, const Tensor& Input) {
     Tensor* Current = const_cast<Tensor*>(&Input);
 
     Tensor* Next = &Context.WorkspaceA;
@@ -111,8 +111,7 @@ void Sequential::compileTraining(ExecutionContext& Context) {
 
         Context.Gradients.emplace_back();
 
-        if (!layer->isViewOperation())
-            Context.Gradients.back().allocate(layer->getOutputShape());
+        Context.Gradients.back().allocate(layer->getOutputShape());
     }
 
 
@@ -132,6 +131,103 @@ void Sequential::compileTraining(ExecutionContext& Context) {
     Context.Workspace.allocate(LargestShape);
 
     Context.IsCompiled = true;
+}
+
+Tensor& Sequential::forwardTraining(ExecutionContext& Context, const Tensor& Input) {
+
+    Context.Activations[0] = Input.view(Input.shape());
+
+
+    Tensor* Current = &Context.Activations[0];
+
+
+    for (size_t i = 0; i < Layers.size(); i++)
+    {
+
+        Tensor& Next = Context.Activations[i + 1];
+
+
+        if (Layers[i]->isViewOperation())
+        {
+            Layers[i]->forward(
+                *Current,
+                Next
+            );
+        }
+        else
+        {
+            Next.reshape(Layers[i]->getOutputShape());
+
+            Layers[i]->forward(
+                *Current,
+                Next
+            );
+        }
+
+
+        Current = &Next;
+
+
+        if (i < 3)
+        {
+            std::cout << "Forward layer: "
+                << i
+                << std::endl;
+
+            Next.debug_print("Activation", 10);
+        }
+    }
+
+
+    return *Current;
+}
+
+
+void Sequential::backpropagation(ExecutionContext& Context, const Tensor& Input, Tensor& GradOutput)
+{
+    Tensor* CurrentGradient = &GradOutput;
+
+
+    for (int i = static_cast<int>(Layers.size()) - 1; i >= 0; i--)
+    {
+
+        Tensor& InputActivation = Context.Activations[i];
+
+        Tensor& OutputActivation = Context.Activations[i + 1];
+
+
+        Tensor& NextGradient = Context.Gradients[i];
+
+
+        NextGradient.reshape(
+            InputActivation.shape()
+        );
+
+
+        std::cout << "Layer " << i << " input shape: ";
+        for (auto x : InputActivation.shape())
+            std::cout << x << " ";
+        std::cout << std::endl;
+
+
+        Layers[i]->backward(
+            InputActivation,
+            OutputActivation,
+            *CurrentGradient,
+            NextGradient
+        );
+
+
+        CurrentGradient = &NextGradient;
+
+
+        std::cout << "Backward layer: "
+            << i
+            << std::endl;
+
+
+        NextGradient.debug_print("Gradient", 10);
+    }
 }
 
 
@@ -247,5 +343,50 @@ void Sequential::Output(const std::string& Type) {
 Tensor& Sequential::Predict(ExecutionContext& Context, const Tensor& Input) {
     compileInference(Context);
 
-    return inference(Context, Input);
+    return forwardInference(Context, Input);
+}
+
+
+void Sequential::Train(ExecutionContext& Context, const Tensor& Input, const Tensor& Label)
+{
+    compileTraining(Context);
+
+
+    Tensor& Prediction = forwardTraining(Context, Input);
+
+
+    Prediction.debug_print("Prediction", 10);
+
+
+    Loss loss;
+
+
+    float LossValue = loss.forward(Prediction, Label);
+
+
+    std::cout << "Loss: "
+        << LossValue
+        << std::endl;
+
+
+
+    Tensor LossGradient(Prediction.shape());
+
+
+    loss.backward(
+        Prediction,
+        Label,
+        LossGradient
+    );
+
+
+    LossGradient.debug_print("Loss Gradient", 10);
+
+
+
+    backpropagation(
+        Context,
+        Input,
+        LossGradient
+    );
 }

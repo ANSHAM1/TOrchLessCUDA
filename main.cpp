@@ -1,16 +1,10 @@
 #include "layer.hpp"
 #include "DataLoader.hpp"
 #include "MNISTLoader.hpp"
+#include <LabelLoader.hpp>
 
 
 int main() {
-    Tensor Images =
-        load_mnist_images(
-            //"Dataset/train-images.idx3-ubyte"
-            "D:/PROJECTs/TorchLess/Dataset/train-images.idx3-ubyte"
-        );
-
-
     Sequential model;
 
     model.Input({ 60000,1,28,28 }, 32);
@@ -33,11 +27,33 @@ int main() {
 
     model.Output("Softmax");
 
+    Tensor Images =
+        load_mnist_images(
+            //"Dataset/train-images.idx3-ubyte"
+            "D:/PROJECTs/TorchLess/Dataset/train-images.idx3-ubyte"
+        );
 
-    DataLoader loader(Images, 32);
+    Tensor Labels =
+        load_mnist_labels(
+            "D:/PROJECTs/TorchLess/Dataset/train-labels.idx1-ubyte"
+        );
+    Labels.debug_print("Labels", 10);
+
+    DataLoader imageLoader(Images, 32);
+    LabelLoader labelLoader(Labels, 32);
 
     ExecutionContext ctx;
-    size_t batch_id = 0;
+
+    Tensor batch = imageLoader.next();
+    Tensor label = labelLoader.next();
+
+    model.Train(ctx, batch, label);
+
+
+ /*   DataLoader loader(Images, 32);
+
+    ExecutionContext ctx;*/
+ /*   size_t batch_id = 0;
     while (loader.hasNext()) {
         Tensor batch = loader.next();
 
@@ -49,7 +65,7 @@ int main() {
         batch_id++;
     }
 
-    std::cout << "Total batches: " << batch_id << std::endl;
+    std::cout << "Total batches: " << batch_id << std::endl;*/
 
     return 0;
 }

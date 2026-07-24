@@ -4,12 +4,12 @@
 
 
 
-DenseLayer::DenseLayer(const std::vector<size_t>& InputShape, size_t OutNumFeature) : OutFeatures(OutNumFeature) {
-    if (InputShape.size() != 2)
+DenseLayer::DenseLayer(const std::vector<size_t>& inputShape, size_t outNumFeature) : OutFeatures(outNumFeature) {
+    if (inputShape.size() != 2)
         throw std::runtime_error("DenseLayer expects flattened input [Batch, Features]");
 
 
-    size_t InFeatures = InputShape[1];
+    size_t InFeatures = inputShape[1];
 
     Weight.allocate({ InFeatures, OutFeatures });
     Bias.allocate({ OutFeatures });
@@ -19,7 +19,7 @@ DenseLayer::DenseLayer(const std::vector<size_t>& InputShape, size_t OutNumFeatu
 
     Bias.fill(0.0f);
 
-    OutputShape = { InputShape[0], OutFeatures };
+    OutputShape = { inputShape[0], OutFeatures };
 }
 
 

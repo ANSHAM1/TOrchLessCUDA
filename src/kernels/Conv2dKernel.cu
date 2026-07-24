@@ -155,11 +155,11 @@ __global__ void conv2dInputBackwardKernel(const float* gradOutput, const float* 
                 int oh = ohNumerator / S;
                 int ow = owNumerator / S;
 
-                if (oh >= OH || ow >= OW)
+                if (oh < 0 || ow < 0 || oh >= OH || ow >= OW)
                     continue;
 
-                size_t outputIndex = ((n * K + k) * OH + oh) * OW + ow;
-                size_t kernelIndex = ((k * C + c) * KH + kh) * KW + kw;
+                size_t outputIndex = ((static_cast<size_t>(n) * K + k) * OH + oh) * OW + ow;
+                size_t kernelIndex = ((static_cast<size_t>(k) * C + c) * KH + kh) * KW + kw;
 
                 gradient += gradOutput[outputIndex] * kernel[kernelIndex];
             }
@@ -247,7 +247,8 @@ __global__ void conv2dWeightBackwardKernel(const float* input, const float* grad
             int oh = pos / OW;
             int ow = pos % OW;
 
-            s_grad[threadIdx.x][threadIdx.y] = gradOutput[((n * K + col) * OH + oh) * OW + ow];
+            //s_grad[threadIdx.x][threadIdx.y] = gradOutput[((n * K + col) * OH + oh) * OW + ow];
+            s_grad[threadIdx.y][threadIdx.x] = gradOutput[((n * K + col) * OH + oh) * OW + ow];
         }
         else
             s_grad[threadIdx.x][threadIdx.y] = 0.0f;
@@ -257,8 +258,8 @@ __global__ void conv2dWeightBackwardKernel(const float* input, const float* grad
 
 
         for (int i = 0; i < TILE_SIZE; i++)
-            sum += s_input[threadIdx.y][i] * s_grad[threadIdx.x][i];
-
+            //sum += s_input[threadIdx.y][i] * s_grad[threadIdx.x][i];
+            sum += s_input[threadIdx.y][i] * s_grad[threadIdx.y][i];
 
         __syncthreads();
     }

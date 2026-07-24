@@ -79,8 +79,14 @@ const float* Storage::ptr() const noexcept {
 
 
 [[nodiscard]]
-size_t Storage::bytes() const noexcept {
+size_t Storage::size() const noexcept {
     return count_;
+}
+
+
+[[nodiscard]]
+size_t Storage::bytes() const noexcept {
+    return count_ * sizeof(float);
 }
 
 
@@ -126,8 +132,8 @@ std::vector<size_t> Tensor::compute_strides(const std::vector<size_t>& shape) {
 }
 
 
-Tensor::Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides)
-    : data_ptr_(ptr), shape_(shape), strides_(strides), is_view_(true) {
+Tensor::Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides, DataType dtype)
+    : data_ptr_(ptr), shape_(shape), strides_(strides), is_view_(true), dtype_(dtype) {
 
     if (ptr == nullptr)
         throw std::runtime_error("Cannot create view from null pointer");
@@ -199,23 +205,8 @@ void Tensor::allocate(const std::vector<size_t>& shape) {
 
     size_t required = shape_product(shape);
 
-    size_t element_size;
-
-    if (dtype_ == DataType::Float32)
-        element_size = sizeof(float);
-
-    else if (dtype_ == DataType::Int32)
-        element_size = sizeof(int);
-
-    else
-        throw std::runtime_error("Unsupported Tensor dtype");
-
-
-    size_t required_bytes = required * element_size;
-
-    if (required_bytes > storage_.bytes())
-        storage_.allocate(required_bytes);
-
+    if (required > storage_.size())
+        storage_.allocate(required);
 
     shape_ = shape;
     strides_ = compute_strides(shape_);
@@ -241,7 +232,7 @@ Tensor Tensor::view(const std::vector<size_t>& new_shape) const {
     if (shape_product(new_shape) != numel())
         throw std::runtime_error("Invalid view shape");
     
-    return Tensor(const_cast<float*>(data()), new_shape, compute_strides(new_shape));
+    return Tensor(const_cast<float*>(data()), new_shape, compute_strides(new_shape), dtype_);
 }
 
 
@@ -271,7 +262,7 @@ size_t Tensor::numel() const noexcept {
 
 [[nodiscard]]
 bool Tensor::allocated() const noexcept {
-    return is_view_ || storage_.bytes() > 0;
+    return is_view_ || storage_.size() > 0;
 }
 
 
@@ -320,11 +311,11 @@ bool Tensor::is_view() const noexcept {
 void Tensor::reshape(const std::vector<size_t>& new_shape) {
     size_t required = shape_product(new_shape);
 
-    size_t available = is_view_ ? numel() : storage_.bytes();
+    size_t available = is_view_ ? numel() : storage_.size();
 
     if (required > available)
         throw std::runtime_error("Tensor::reshape(): insufficient memory.");
-    
+
     shape_ = new_shape;
     strides_ = compute_strides(shape_);
 }
@@ -437,9 +428,14 @@ void Tensor::debug_print(const char* name, size_t elements) const {
 
     std::cerr << ") numel="
         << numel()
-        << " bytes="
-        << numel() * sizeof(float)
-        << "\n";
+        << " bytes=";
+
+    if (dtype_ == DataType::Float32)
+        std::cerr << numel() * sizeof(float);
+    else
+        std::cerr << numel() * sizeof(int);
+
+    std::cerr << "\n";
 
 
     if (elements == 0)
@@ -449,23 +445,48 @@ void Tensor::debug_print(const char* name, size_t elements) const {
     elements = std::min(elements, numel());
 
 
-    std::vector<float> host(elements);
-
-    copyToHost(
-        host.data(),
-        elements
-    );
-
-
     std::cout << "Values: ";
 
-    for (size_t i = 0; i < elements; i++)
-    {
-        std::cout << host[i];
 
-        if (i + 1 < elements)
-            std::cout << " ";
+    if (dtype_ == DataType::Float32)
+    {
+        std::vector<float> host(elements);
+
+
+        copyToHost(
+            host.data(),
+            elements
+        );
+
+
+        for (size_t i = 0; i < elements; i++)
+        {
+            std::cout << host[i];
+
+            if (i + 1 < elements)
+                std::cout << " ";
+        }
     }
+    else if (dtype_ == DataType::Int32)
+    {
+        std::vector<int> host(elements);
+
+
+        copyToHost(
+            host.data(),
+            elements
+        );
+
+
+        for (size_t i = 0; i < elements; i++)
+        {
+            std::cout << host[i];
+
+            if (i + 1 < elements)
+                std::cout << " ";
+        }
+    }
+
 
     std::cout << "\n";
 }

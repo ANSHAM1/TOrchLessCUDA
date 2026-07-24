@@ -111,7 +111,7 @@ public:
     size_t Stride;
     size_t Padding;
 
-    Conv2dLayer(const std::vector<size_t>& InputShape, const std::vector<size_t>& KernelShape, 
+    Conv2dLayer(const std::vector<size_t>& inputShape, const std::vector<size_t>& kernelShape, 
         size_t stride, size_t padding);
 
     void forward(const Tensor& input, Tensor& output) override;
@@ -134,7 +134,7 @@ public:
 
     std::string Type;
 
-    ActivationLayer(const std::vector<size_t>& InputShape, const std::string& type);
+    ActivationLayer(const std::vector<size_t>& inputShape, const std::string& type);
 
     void forward(const Tensor& input, Tensor& output) override;
 
@@ -157,7 +157,7 @@ public:
 
     std::string Type;
 
-    PoolingLayer(const std::vector<size_t>& InputShape, size_t kh, size_t kw, size_t sh,size_t sw, 
+    PoolingLayer(const std::vector<size_t>& inputShape, size_t kh, size_t kw, size_t sh,size_t sw, 
         size_t ph, size_t pw, const std::string& type);
 
     void forward(const Tensor& input, Tensor& output) override;
@@ -170,7 +170,7 @@ public:
 class FlattenLayer : public Layer {
 public:
 
-    FlattenLayer(const std::vector<size_t>& InputShape);
+    FlattenLayer(const std::vector<size_t>& inputShape);
 
     void forward(const Tensor& input, Tensor& output) override;
 
@@ -196,7 +196,7 @@ public:
 
     size_t OutFeatures;
 
-    DenseLayer(const std::vector<size_t>& InputShape, size_t OutNumFeature);
+    DenseLayer(const std::vector<size_t>& inputShape, size_t outNumFeature);
 
     void forward(const Tensor& input, Tensor& output) override;
 
@@ -218,7 +218,7 @@ public:
 
     std::string Type;
 
-    OutputLayer(const std::vector<size_t>& InputShape, const std::string& type = "Softmax");
+    OutputLayer(const std::vector<size_t>& inputShape, const std::string& type = "Softmax");
 
     void forward(const Tensor& input, Tensor& output) override;
 
@@ -245,11 +245,14 @@ private:
 
     // Inference
     void compileInference(ExecutionContext& Context);
-    Tensor& inference(ExecutionContext& Context, const Tensor& Input);
+    Tensor& forwardInference(ExecutionContext& Context, const Tensor& Input);
 
     // Training
     void compileTraining(ExecutionContext& Context);
+    Tensor& forwardTraining(ExecutionContext& Context, const Tensor& Input);
 
+
+    void backpropagation(ExecutionContext& Context, const Tensor& Input, Tensor& GradOutput);
 
 public:
 

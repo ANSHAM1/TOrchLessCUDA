@@ -2,8 +2,8 @@
 
 
 
-ActivationLayer::ActivationLayer(const std::vector<size_t>& InputShape, const std::string& type) : Type(type) {
-    OutputShape = InputShape;
+ActivationLayer::ActivationLayer(const std::vector<size_t>& inputShape, const std::string& type) : Type(type) {
+    OutputShape = inputShape;
 }
 
 

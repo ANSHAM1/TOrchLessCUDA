@@ -2,11 +2,11 @@
 
 
 
-OutputLayer::OutputLayer(const std::vector<size_t>& InputShape, const std::string& type) : Type(type) {
+OutputLayer::OutputLayer(const std::vector<size_t>& inputShape, const std::string& type) : Type(type) {
     if (Type != "Softmax" && Type != "Sigmoid")
         throw std::runtime_error("Unsupported output layer type.");
     
-    OutputShape = InputShape;
+    OutputShape = inputShape;
 }
 
 

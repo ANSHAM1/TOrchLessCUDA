@@ -47,6 +47,9 @@ public:
     const float* ptr() const noexcept;
 
     [[nodiscard]]
+    size_t size() const noexcept;
+
+    [[nodiscard]]
     size_t bytes() const noexcept;
 
     Storage(const Storage&) = delete;
@@ -87,7 +90,7 @@ private:
 
 private:
 
-    explicit Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides);
+    explicit Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides, DataType dtype = DataType::Float32);
 
 public:
 
