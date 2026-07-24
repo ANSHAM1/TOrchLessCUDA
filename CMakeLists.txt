@@ -17,9 +17,15 @@ add_executable(app
     src/modules/ActivationLayer.cpp 
     src/modules/FlattenLayer.cpp
     src/modules/Conv2dLayer.cpp
+    src/modules/PoolingLayer.cpp
+    src/modules/DenseLayer.cpp
+    src/modules/OutputLayer.cpp
 
     src/kernels/ActivationKernel.cu 
     src/kernels/Conv2dKernel.cu 
+    src/kernels/PoolingKernel.cu 
+    src/kernels/DenseKernel.cu 
+    src/kernels/OutputKernel.cu
 )
 
 target_include_directories(app PRIVATE

@@ -2,22 +2,6 @@
 
 
 
-void Sequential::Input(const std::vector<size_t>& Shape, size_t Batch) {
-    if (Shape.size() != 4)
-        throw std::invalid_argument("Input shape must be (N, C, H, W)");
-
-    if (Batch == 0)
-        throw std::invalid_argument("Batch size cannot be zero.");
-
-
-    InputShape = { Batch, Shape[1], Shape[2], Shape[3] };
-
-    BatchSize = Batch;
-
-    NumBatch = Shape[0] / Batch;
-}
-
-
 
 // Compile Inference
 void Sequential::compileInference(ExecutionContext& Context) {
@@ -102,4 +86,109 @@ void Sequential::compileTraining(ExecutionContext& Context) {
     Context.Workspace.allocate(LargestShape);
 
     Context.IsCompiled = true;
+}
+
+
+
+
+void Sequential::Input(const std::vector<size_t>& Shape, size_t Batch) {
+    if (Shape.size() != 4)
+        throw std::invalid_argument("Input shape must be (N, C, H, W)");
+
+    if (Batch == 0)
+        throw std::invalid_argument("Batch size cannot be zero.");
+
+
+    InputShape = { Batch, Shape[1], Shape[2], Shape[3] };
+
+    BatchSize = Batch;
+
+    NumBatch = Shape[0] / Batch;
+
+    CurrentShape = InputShape;
+}
+
+
+void Sequential::Conv2D(const std::vector<size_t>& KernelShape, size_t Stride, size_t Padding) {
+    if (KernelShape.size() != 4)
+        throw std::invalid_argument("Kernel shape must be OIHW");
+
+    auto Layer = std::make_unique<Conv2dLayer>(CurrentShape, KernelShape, Stride, Padding);
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::ReLU() {
+    auto Layer = std::make_unique<ActivationLayer>(CurrentShape, "relu");
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::Sigmoid() {
+    auto Layer = std::make_unique<ActivationLayer>(CurrentShape, "sigmoid");
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::Tanh() {
+    auto Layer = std::make_unique<ActivationLayer>(CurrentShape, "tanh");
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::MaxPooling(size_t KH, size_t KW, size_t SH, size_t SW, size_t PH, size_t PW) {
+    auto Layer = std::make_unique<PoolingLayer>(CurrentShape, KH, KW, SH, SW, PH, PW, "max");
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::AvgPooling(size_t KH, size_t KW, size_t SH, size_t SW, size_t PH, size_t PW) {
+    auto Layer = std::make_unique<PoolingLayer>(CurrentShape, KH, KW, SH, SW, PH, PW, "avg");
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::Flatten() {
+    auto Layer = std::make_unique<FlattenLayer>(CurrentShape);
+
+    CurrentShape = Layer->getOutputShape();
+
+
+    Layers.emplace_back(std::move(Layer));
+}
+
+
+void Sequential::Dense(size_t OutFeatures) {
+    auto Layer = std::make_unique<DenseLayer>(CurrentShape, OutFeatures);
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back( std::move(Layer));
+}
+
+
+void Sequential::Output(const std::string& Type) {
+    auto Layer = std::make_unique<OutputLayer>(CurrentShape, Type);
+
+    CurrentShape = Layer->getOutputShape();
+
+    Layers.emplace_back(std::move(Layer));
 }

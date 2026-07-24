@@ -29,6 +29,12 @@ public:
 };
 
 
+// Loss 
+class Loss {
+
+};
+
+
 
 
 // Base Layer
@@ -160,7 +166,7 @@ public:
 
     std::string Type;
 
-    OutputLayer(const std::vector<size_t>& InputShape, const std::string& type = "CrossEntropy");
+    OutputLayer(const std::vector<size_t>& InputShape, const std::string& type = "Softmax");
 
     void forward(const Tensor& input, Tensor& output) override;
 };
@@ -173,13 +179,12 @@ private:
     std::vector<std::unique_ptr<Layer>> Layers;
 
     std::vector<size_t> InputShape;
+    std::vector<size_t> CurrentShape;
 
     size_t BatchSize = 1;
     size_t NumBatch = 0;
 
 private:
-
-    //const std::vector<size_t>& getCurrentOutputShape() const;
 
     void compileInference(ExecutionContext& Context);
 
@@ -201,7 +206,9 @@ public:
 
     //----------------------------------------------------------
 
-    void Activate(const std::string& Type);
+    void ReLU();
+    void Sigmoid();
+    void Tanh();
 
     //----------------------------------------------------------
 
@@ -221,7 +228,7 @@ public:
 
     //----------------------------------------------------------
 
-    void Output(const std::string& Loss = "CrossEntropy");
+    void Output(const std::string& type = "Softmax");
 
     //----------------------------------------------------------
 
