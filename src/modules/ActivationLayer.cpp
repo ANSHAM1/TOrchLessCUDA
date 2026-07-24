@@ -7,37 +7,8 @@ ActivationLayer::ActivationLayer(const std::vector<size_t>& InputShape, const st
 }
 
 
-void ActivationLayer::forward(const Tensor& input, Tensor& output, ExecutionContext& context) {
+void ActivationLayer::forward(const Tensor& input, Tensor& output) {
     output.reshape(OutputShape);
 
-    if (Type == "relu")
-    {
-        /* reluForward(
-            input,
-            output,
-            context
-        );*/
-    }
-    else if (Type == "sigmoid")
-    {
-        /* sigmoidForward(
-            input,
-            output,
-            context
-        );*/
-    }
-    else if (Type == "tanh")
-    {
-        /* tanhForward(
-            input,
-            output,
-            context
-        );*/
-    }
-    else
-    {
-        throw std::runtime_error(
-            "Unsupported activation type: " + Type
-        );
-    }
+    activationForward(input, output, Type);
 }

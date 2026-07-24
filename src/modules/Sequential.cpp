@@ -61,20 +61,28 @@ void Sequential::compileTraining(ExecutionContext& Context) {
     Context.Activations.emplace_back();
     Context.Activations.back().allocate(Shape);
 
-    for (const auto& Layer : Layers) {
-        Shape = Layer->getOutputShape();
+    for (const auto& layer : Layers) {
+        Shape = layer->getOutputShape();
 
         Context.Activations.emplace_back();
-        Context.Activations.back().allocate(Shape);
+
+        if (!layer->isViewOperation())
+            Context.Activations.back().allocate(Shape);
     }
 
 
     // Allocate Gradient Buffers
     Context.Gradients.reserve(Context.Activations.size());
 
-    for (const auto& Activation : Context.Activations) {
+    Context.Gradients.emplace_back();
+    Context.Gradients.back().allocate(InputShape);
+
+    for (const auto& layer : Layers) {
+
         Context.Gradients.emplace_back();
-        Context.Gradients.back().allocate(Activation.shape());
+
+        if (!layer->isViewOperation())
+            Context.Gradients.back().allocate(layer->getOutputShape());
     }
 
 

@@ -145,11 +145,15 @@ public:
 
     void randomTensor(unsigned long long seed);
 
-    [[nodiscard]]
+    /*[[nodiscard]]
     void* raw_ptr() noexcept;
 
     [[nodiscard]]
-    const void* raw_ptr() const noexcept;
+    const void* raw_ptr() const noexcept;*/
+
+    void copyFromHost(const float* data, size_t count);
+
+    void copyToHost(float* data, size_t count) const;
 
     void debug_print(const char* name = "") const;
 

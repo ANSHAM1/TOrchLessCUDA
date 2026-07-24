@@ -9,11 +9,17 @@ find_package(CUDAToolkit REQUIRED)
 
 add_executable(app
     main.cpp
+
     src/tensor.cpp
     src/util_kernels.cu
-    src/modules/Sequentia.cpp
+
+    src/modules/Sequential.cpp
     src/modules/ActivationLayer.cpp 
     src/modules/FlattenLayer.cpp
+    src/modules/Conv2dLayer.cpp
+
+    src/kernels/ActivationKernel.cu 
+    src/kernels/Conv2dKernel.cu 
 )
 
 target_include_directories(app PRIVATE

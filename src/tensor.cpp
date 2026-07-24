@@ -339,15 +339,35 @@ void Tensor::randomTensor(unsigned long long seed) {
 }
 
 
-[[nodiscard]]
-void* Tensor::raw_ptr() noexcept {
-    return static_cast<void*>(data());
+//[[nodiscard]]
+//void* Tensor::raw_ptr() noexcept {
+//    return static_cast<void*>(data());
+//}
+//
+//
+//[[nodiscard]]
+//const void* Tensor::raw_ptr() const noexcept {
+//    return static_cast<const void*>(data());
+//}
+
+
+void Tensor::copyFromHost(const float* data, size_t count) {
+    if (count > numel())
+        throw std::runtime_error("copyFromHost: size exceeds tensor capacity");
+
+    CUDA_CHECK(
+        cudaMemcpy(this->data(), data, count * sizeof(float), cudaMemcpyHostToDevice)
+    );
 }
 
 
-[[nodiscard]]
-const void* Tensor::raw_ptr() const noexcept {
-    return static_cast<const void*>(data());
+void Tensor::copyToHost(float* data, size_t count) const {
+    if (count > numel())
+        throw std::runtime_error("copyFromHost: size exceeds tensor capacity");
+
+    CUDA_CHECK(
+        cudaMemcpy(data, this->data(), count * sizeof(float), cudaMemcpyDeviceToHost)
+    );
 }
 
 

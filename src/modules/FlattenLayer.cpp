@@ -1,7 +1,5 @@
 #include "layer.hpp"
 
-//#include "cuda_runtime.h"
-
 
 
 FlattenLayer::FlattenLayer(const std::vector<size_t>& InputShape) {
@@ -19,6 +17,6 @@ FlattenLayer::FlattenLayer(const std::vector<size_t>& InputShape) {
 
 
 
-void FlattenLayer::forward(const Tensor& input, Tensor& output, ExecutionContext&) {
+void FlattenLayer::forward(const Tensor& input, Tensor& output) {
     output = input.view(OutputShape);
 }

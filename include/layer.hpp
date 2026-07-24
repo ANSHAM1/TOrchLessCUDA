@@ -30,6 +30,7 @@ public:
 
 
 
+
 // Base Layer
 class Layer {
 protected:
@@ -43,7 +44,7 @@ public:
     virtual void initialize() {}
 
 
-    virtual void forward(const Tensor& input, Tensor& output, ExecutionContext& context) = 0;
+    virtual void forward(const Tensor& input, Tensor& output) = 0;
 
     virtual void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, 
         Tensor& gradInput, ExecutionContext& context) {}
@@ -52,10 +53,15 @@ public:
         return {};
     }
 
+    virtual bool isViewOperation() const {
+        return false;
+    }
+
     const std::vector<size_t>& getOutputShape() const {
         return OutputShape;
     }
 };
+
 
 
 
@@ -73,7 +79,7 @@ public:
     Conv2dLayer(const std::vector<size_t>& InputShape, const std::vector<size_t>& KernelShape, 
         size_t stride, size_t padding);
 
-    void forward(const Tensor& input, Tensor& output, ExecutionContext& context) override;
+    void forward(const Tensor& input, Tensor& output) override;
 
     std::vector<Tensor*> parameters() override {
         return { &Kernel, &Bias };
@@ -89,7 +95,7 @@ public:
 
     ActivationLayer(const std::vector<size_t>& InputShape, const std::string& type);
 
-    void forward(const Tensor& input, Tensor& output, ExecutionContext& context) override;
+    void forward(const Tensor& input, Tensor& output) override;
 };
 
 
@@ -111,7 +117,7 @@ public:
     PoolingLayer(const std::vector<size_t>& InputShape, size_t kh, size_t kw, size_t sh,size_t sw, 
         size_t ph, size_t pw, const std::string& type);
 
-    void forward(const Tensor& input, Tensor& output, ExecutionContext& context) override;
+    void forward(const Tensor& input, Tensor& output) override;
 };
 
 
@@ -121,7 +127,11 @@ public:
 
     FlattenLayer(const std::vector<size_t>& InputShape);
 
-    void forward(const Tensor& input, Tensor& output, ExecutionContext& context) override;
+    void forward(const Tensor& input, Tensor& output) override;
+
+    bool isViewOperation() const override {
+        return true;
+    }
 };
 
 
@@ -136,7 +146,7 @@ public:
 
     DenseLayer(const std::vector<size_t>& InputShape, size_t OutNumFeature);
 
-    void forward(const Tensor& input, Tensor& output, ExecutionContext& context) override;
+    void forward(const Tensor& input, Tensor& output) override;
 
     std::vector<Tensor*> parameters() override {
         return { &Weight, &Bias };
@@ -152,7 +162,7 @@ public:
 
     OutputLayer(const std::vector<size_t>& InputShape, const std::string& type = "CrossEntropy");
 
-    void forward(const Tensor& input, Tensor& output, ExecutionContext& context) override;
+    void forward(const Tensor& input, Tensor& output) override;
 };
 
 
