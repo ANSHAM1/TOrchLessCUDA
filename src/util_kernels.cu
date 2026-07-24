@@ -41,7 +41,7 @@ void tensorAssignRandom(float* data, size_t size, unsigned long long seed) {
     int threads(256);
     int blocks((size + threads - 1) / threads);
 
-    ExecuteKernel("tensorAssignRandomKernel", blocks, threads, 0, 0, tensorAssignKernel, data, size, seed);
+    ExecuteKernel("tensorAssignRandomKernel", blocks, threads, 0, 0, tensorAssignRandomKernel, data, size, seed);
 }
 
 

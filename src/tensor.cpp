@@ -339,18 +339,6 @@ void Tensor::randomTensor(unsigned long long seed) {
 }
 
 
-//[[nodiscard]]
-//void* Tensor::raw_ptr() noexcept {
-//    return static_cast<void*>(data());
-//}
-//
-//
-//[[nodiscard]]
-//const void* Tensor::raw_ptr() const noexcept {
-//    return static_cast<const void*>(data());
-//}
-
-
 void Tensor::copyFromHost(const float* data, size_t count) {
     if (count > numel())
         throw std::runtime_error("copyFromHost: size exceeds tensor capacity");
@@ -363,7 +351,7 @@ void Tensor::copyFromHost(const float* data, size_t count) {
 
 void Tensor::copyToHost(float* data, size_t count) const {
     if (count > numel())
-        throw std::runtime_error("copyFromHost: size exceeds tensor capacity");
+        throw std::runtime_error("copyToHost: size exceeds tensor capacity");
 
     CUDA_CHECK(
         cudaMemcpy(data, this->data(), count * sizeof(float), cudaMemcpyDeviceToHost)
@@ -371,15 +359,49 @@ void Tensor::copyToHost(float* data, size_t count) const {
 }
 
 
-void Tensor::debug_print(const char* name) const {
+void Tensor::debug_print(const char* name, size_t elements) const {
+
     std::cerr << "[Tensor " << name << "] shape=(";
 
-    for (size_t i = 0; i < shape_.size(); ++i) {
+    for (size_t i = 0; i < shape_.size(); ++i)
+    {
         if (i)
             std::cerr << ",";
 
         std::cerr << shape_[i];
     }
 
-    std::cerr << ") numel=" << numel() << " bytes=" << numel() * sizeof(float) << "\n";
+    std::cerr << ") numel="
+        << numel()
+        << " bytes="
+        << numel() * sizeof(float)
+        << "\n";
+
+
+    if (elements == 0)
+        return;
+
+
+    elements = std::min(elements, numel());
+
+
+    std::vector<float> host(elements);
+
+    copyToHost(
+        host.data(),
+        elements
+    );
+
+
+    std::cout << "Values: ";
+
+    for (size_t i = 0; i < elements; i++)
+    {
+        std::cout << host[i];
+
+        if (i + 1 < elements)
+            std::cout << " ";
+    }
+
+    std::cout << "\n";
 }

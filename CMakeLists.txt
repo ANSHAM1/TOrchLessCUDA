@@ -30,6 +30,7 @@ add_executable(app
 
 target_include_directories(app PRIVATE
     include
+    utils
 )
 
 target_link_libraries(app PRIVATE

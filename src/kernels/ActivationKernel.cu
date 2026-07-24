@@ -49,7 +49,7 @@ void activationForward(const Tensor& input, Tensor& output, const std::string& t
     int threads = 256;
     int blocks = (size + threads - 1) / threads;
 
-    if (type == " relu")
+    if (type == "relu")
         ExecuteKernel("reluKernel", blocks, threads, 0, 0, reluKernel, input.data(), output.data(), size);
   
     else if (type == "sigmoid")

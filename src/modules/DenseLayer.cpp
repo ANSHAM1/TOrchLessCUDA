@@ -13,7 +13,11 @@ DenseLayer::DenseLayer(const std::vector<size_t>& InputShape, size_t OutNumFeatu
     Weight.allocate({ InFeatures, OutFeatures });
     Bias.allocate({ OutFeatures });
 
-    Weight.randomTensor(1234ULL);
+    float limit = sqrtf(6.0f / (InFeatures + OutFeatures));
+    uniformDist(Weight.data(), Weight.numel(), 1234ULL, -limit, limit);
+
+    Weight.debug_print("Dense Weight", 10);
+
     Bias.fill(0.0f);
 
     OutputShape = { InputShape[0], OutFeatures };

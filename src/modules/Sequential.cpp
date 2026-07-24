@@ -31,6 +31,52 @@ void Sequential::compileInference(ExecutionContext& Context) {
 }
 
 
+Tensor& Sequential::inference(ExecutionContext& Context, const Tensor& Input) {
+    Tensor* Current = const_cast<Tensor*>(&Input);
+
+    Tensor* Next = &Context.WorkspaceA;
+
+    bool useA = true;
+    for (auto& Layer : Layers) {
+        if (Layer->isViewOperation())
+        {
+            Tensor View;
+
+            Layer->forward(
+                *Current,
+                View
+            );
+
+            Current = new Tensor(std::move(View));
+
+            continue;
+        }
+
+        /*
+            Output tensor gets only reshaped.
+            Memory is already allocated in compile().
+        */
+
+        Next->reshape(Layer->getOutputShape());
+
+        Layer->forward(*Current, *Next);
+
+
+        Current = Next;
+
+
+        if (useA)
+            Next = &Context.WorkspaceB;
+        else
+            Next = &Context.WorkspaceA;
+
+        useA = !useA;
+    }
+
+    return *Current;
+}
+
+
 // Compile Training
 void Sequential::compileTraining(ExecutionContext& Context) {
     if (Context.IsCompiled)
@@ -89,6 +135,7 @@ void Sequential::compileTraining(ExecutionContext& Context) {
 }
 
 
+// -------------------------------------------------------------------------------------------------------------
 
 
 void Sequential::Input(const std::vector<size_t>& Shape, size_t Batch) {
@@ -191,4 +238,14 @@ void Sequential::Output(const std::string& Type) {
     CurrentShape = Layer->getOutputShape();
 
     Layers.emplace_back(std::move(Layer));
+}
+
+
+//------------------------------------------------------------------------------------------------------------ -
+
+
+Tensor& Sequential::Predict(ExecutionContext& Context, const Tensor& Input) {
+    compileInference(Context);
+
+    return inference(Context, Input);
 }

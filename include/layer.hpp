@@ -190,7 +190,7 @@ private:
 
     void compileTraining(ExecutionContext& Context);
 
-    Tensor& forwardInference(ExecutionContext& Context, const Tensor& Input);
+    Tensor& inference(ExecutionContext& Context, const Tensor& Input);
 
 public:
 

@@ -155,7 +155,7 @@ public:
 
     void copyToHost(float* data, size_t count) const;
 
-    void debug_print(const char* name = "") const;
+    void debug_print(const char* name, size_t elements) const;
 
     ~Tensor() = default;
 };
