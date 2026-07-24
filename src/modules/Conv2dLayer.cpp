@@ -36,7 +36,17 @@ Conv2dLayer::Conv2dLayer(const std::vector<size_t>& InputShape, const std::vecto
 }
 
 
-
 void Conv2dLayer::forward(const Tensor& input, Tensor& output) {
     conv2dForward(input, Kernel, Bias, output, Stride, Padding);
+}
+
+
+void Conv2dLayer::backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) {
+    gradInput.reshape(input.shape());
+
+    conv2dInputBackward(gradOutput, Kernel, gradInput, Stride, Padding);
+
+    conv2dWeightBackward(input, gradOutput, KernelGrad, Stride, Padding);
+
+    conv2dBiasBackward(gradOutput, BiasGrad);
 }

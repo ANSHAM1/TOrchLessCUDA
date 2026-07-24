@@ -9,6 +9,9 @@
 
 
 
+
+
+
 // Execution Context
 class ExecutionContext {
 public:
@@ -29,10 +32,29 @@ public:
 };
 
 
+
+
+
+
 // Loss 
 class Loss {
+private:
 
+    std::string Type;
+
+public:
+
+    Loss(const std::string& type = "CCE") : Type(type) {}
+
+    // Forward loss value
+    float forward(const Tensor& prediction, const Tensor& target) const;
+
+    // Gradient w.r.t prediction
+    void backward(const Tensor& prediction, const Tensor& target, Tensor& grad) const;
 };
+
+
+
 
 
 
@@ -52,10 +74,13 @@ public:
 
     virtual void forward(const Tensor& input, Tensor& output) = 0;
 
-    virtual void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, 
-        Tensor& gradInput, ExecutionContext& context) {}
+    virtual void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) {}
 
     virtual std::vector<Tensor*> parameters() {
+        return {};
+    }
+
+    virtual std::vector<Tensor*> gradients() {
         return {};
     }
 
@@ -71,13 +96,17 @@ public:
 
 
 
-
 // Convolution Layer
 class Conv2dLayer : public Layer {
 public:
 
+    //Parameters:
     Tensor Kernel;
     Tensor Bias;
+
+    //Gradients:
+    Tensor KernelGrad;
+    Tensor BiasGrad;
 
     size_t Stride;
     size_t Padding;
@@ -87,8 +116,14 @@ public:
 
     void forward(const Tensor& input, Tensor& output) override;
 
+    void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
+
     std::vector<Tensor*> parameters() override {
         return { &Kernel, &Bias };
+    }
+
+    std::vector<Tensor*> gradients() override {
+        return { &KernelGrad, &BiasGrad };
     }
 };
 
@@ -102,6 +137,8 @@ public:
     ActivationLayer(const std::vector<size_t>& InputShape, const std::string& type);
 
     void forward(const Tensor& input, Tensor& output) override;
+
+    void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
 };
 
 
@@ -124,6 +161,8 @@ public:
         size_t ph, size_t pw, const std::string& type);
 
     void forward(const Tensor& input, Tensor& output) override;
+
+    void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
 };
 
 
@@ -135,6 +174,8 @@ public:
 
     void forward(const Tensor& input, Tensor& output) override;
 
+    void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
+
     bool isViewOperation() const override {
         return true;
     }
@@ -145,8 +186,13 @@ public:
 class DenseLayer : public Layer {
 public:
 
+    //Parameters:
     Tensor Weight;
     Tensor Bias;
+
+    //Gradients:
+    Tensor WeightGrad;
+    Tensor BiasGrad;
 
     size_t OutFeatures;
 
@@ -154,8 +200,14 @@ public:
 
     void forward(const Tensor& input, Tensor& output) override;
 
+    void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
+
     std::vector<Tensor*> parameters() override {
         return { &Weight, &Bias };
+    }
+
+    std::vector<Tensor*> gradients() override {
+        return { &WeightGrad, &BiasGrad };
     }
 };
 
@@ -169,7 +221,12 @@ public:
     OutputLayer(const std::vector<size_t>& InputShape, const std::string& type = "Softmax");
 
     void forward(const Tensor& input, Tensor& output) override;
+
+    void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
 };
+
+
+
 
 
 // Sequential Model
@@ -186,59 +243,44 @@ private:
 
 private:
 
+    // Inference
     void compileInference(ExecutionContext& Context);
+    Tensor& inference(ExecutionContext& Context, const Tensor& Input);
 
+    // Training
     void compileTraining(ExecutionContext& Context);
 
-    Tensor& inference(ExecutionContext& Context, const Tensor& Input);
 
 public:
 
     Sequential() = default;
 
-    //----------------------------------------------------------
 
     void Input(const std::vector<size_t>& Shape, size_t Batch);
 
-    //----------------------------------------------------------
-
     void Conv2D(const std::vector<size_t>& KernelShape, size_t Stride = 1, size_t Padding = 0);
-
-    //----------------------------------------------------------
 
     void ReLU();
     void Sigmoid();
     void Tanh();
 
-    //----------------------------------------------------------
-
     void MaxPooling(size_t KH, size_t KW, size_t SH = 1, size_t SW = 1, size_t PH = 0, size_t PW = 0);
-
-    //----------------------------------------------------------
-
     void AvgPooling(size_t KH, size_t KW, size_t SH = 1, size_t SW = 1, size_t PH = 0, size_t PW = 0);
-
-    //----------------------------------------------------------
 
     void Flatten();
 
-    //----------------------------------------------------------
-
     void Dense(size_t OutFeatures);
-
-    //----------------------------------------------------------
 
     void Output(const std::string& type = "Softmax");
 
-    //----------------------------------------------------------
+    
 
     Tensor& Predict(ExecutionContext& Context, const Tensor& Input);
 
-    //----------------------------------------------------------
-
     void Train(ExecutionContext& Context, const Tensor& Input, const Tensor& Label);
 
-    //----------------------------------------------------------
+    
+
 
     std::vector<Tensor*> parameters() {
         std::vector<Tensor*> Params;

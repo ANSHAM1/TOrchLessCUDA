@@ -79,7 +79,7 @@ const float* Storage::ptr() const noexcept {
 
 
 [[nodiscard]]
-size_t Storage::size() const noexcept {
+size_t Storage::bytes() const noexcept {
     return count_;
 }
 
@@ -134,8 +134,8 @@ Tensor::Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<s
 }
 
 
-Tensor::Tensor(const std::vector<size_t>& shape)
-    : shape_(shape), strides_(compute_strides(shape)) {
+Tensor::Tensor(const std::vector<size_t>& shape, DataType dtype)
+    : shape_(shape), strides_(compute_strides(shape)), dtype_(dtype) {
 
     size_t n = numel();
 
@@ -199,8 +199,23 @@ void Tensor::allocate(const std::vector<size_t>& shape) {
 
     size_t required = shape_product(shape);
 
-    if (required > storage_.size())
-        storage_.allocate(required);
+    size_t element_size;
+
+    if (dtype_ == DataType::Float32)
+        element_size = sizeof(float);
+
+    else if (dtype_ == DataType::Int32)
+        element_size = sizeof(int);
+
+    else
+        throw std::runtime_error("Unsupported Tensor dtype");
+
+
+    size_t required_bytes = required * element_size;
+
+    if (required_bytes > storage_.bytes())
+        storage_.allocate(required_bytes);
+
 
     shape_ = shape;
     strides_ = compute_strides(shape_);
@@ -256,7 +271,7 @@ size_t Tensor::numel() const noexcept {
 
 [[nodiscard]]
 bool Tensor::allocated() const noexcept {
-    return is_view_ || storage_.size() > 0;
+    return is_view_ || storage_.bytes() > 0;
 }
 
 
@@ -279,6 +294,24 @@ const float* Tensor::data() const noexcept {
 
 
 [[nodiscard]]
+int* Tensor::int_data() noexcept{
+    if (is_view_)
+        return reinterpret_cast<int*>(data_ptr_);
+
+    return reinterpret_cast<int*>(storage_.ptr());
+}
+
+
+[[nodiscard]]
+const int* Tensor::int_data() const noexcept {
+    if (is_view_)
+        return reinterpret_cast<const int*>(data_ptr_);
+
+    return reinterpret_cast<const int*>(storage_.ptr());
+}
+
+
+[[nodiscard]]
 bool Tensor::is_view() const noexcept {
     return is_view_;
 }
@@ -287,7 +320,7 @@ bool Tensor::is_view() const noexcept {
 void Tensor::reshape(const std::vector<size_t>& new_shape) {
     size_t required = shape_product(new_shape);
 
-    size_t available = is_view_ ? numel() : storage_.size();
+    size_t available = is_view_ ? numel() : storage_.bytes();
 
     if (required > available)
         throw std::runtime_error("Tensor::reshape(): insufficient memory.");
@@ -340,6 +373,9 @@ void Tensor::randomTensor(unsigned long long seed) {
 
 
 void Tensor::copyFromHost(const float* data, size_t count) {
+    if (dtype_ != DataType::Float32)
+        throw std::runtime_error("Tensor is not Float32");
+
     if (count > numel())
         throw std::runtime_error("copyFromHost: size exceeds tensor capacity");
 
@@ -350,11 +386,39 @@ void Tensor::copyFromHost(const float* data, size_t count) {
 
 
 void Tensor::copyToHost(float* data, size_t count) const {
+    if (dtype_ != DataType::Float32)
+        throw std::runtime_error("Tensor is not Float32");
+
     if (count > numel())
         throw std::runtime_error("copyToHost: size exceeds tensor capacity");
 
     CUDA_CHECK(
         cudaMemcpy(data, this->data(), count * sizeof(float), cudaMemcpyDeviceToHost)
+    );
+}
+
+
+void Tensor::copyFromHost(const int* data, size_t count) {
+    if (dtype_ != DataType::Int32)
+        throw std::runtime_error("Tensor is not Int32");
+
+    if (count > numel())
+        throw std::runtime_error("copyToHost: size exceeds tensor capacity");
+
+    CUDA_CHECK(
+        cudaMemcpy(int_data(), data, count * sizeof(int), cudaMemcpyHostToDevice)
+    );
+}
+
+void Tensor::copyToHost(int* data, size_t count) const {
+    if (dtype_ != DataType::Int32)
+        throw std::runtime_error("Tensor is not Int32");
+
+    if (count > numel())
+        throw std::runtime_error("copyToHost: size exceeds tensor capacity");
+
+    CUDA_CHECK(
+        cudaMemcpy(data, int_data(), count * sizeof(int), cudaMemcpyDeviceToHost)
     );
 }
 

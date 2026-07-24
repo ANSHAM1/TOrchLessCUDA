@@ -21,6 +21,9 @@ add_executable(app
     src/modules/DenseLayer.cpp
     src/modules/OutputLayer.cpp
 
+    src/losses/loss.cpp
+    src/losses/SoftmaxCCE.cu
+
     src/kernels/ActivationKernel.cu 
     src/kernels/Conv2dKernel.cu 
     src/kernels/PoolingKernel.cu 

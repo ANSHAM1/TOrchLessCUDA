@@ -16,8 +16,17 @@ PoolingLayer::PoolingLayer(const std::vector<size_t>& InputShape, size_t kh, siz
     OutputShape = { InputShape[0], InputShape[1], H, W };
 }
 
+
 void PoolingLayer::forward(const Tensor& input, Tensor& output) {
     output.reshape(OutputShape);
 
     poolingForward(input, output, KernelHeight, KernelWidth, StrideHeight, StrideWidth, PaddingHeight, PaddingWidth, Type);
+}
+
+
+void PoolingLayer::backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) {
+    gradInput.reshape(input.shape());
+
+    poolingBackward(input, output, gradOutput, gradInput, KernelHeight, KernelWidth, StrideHeight, 
+        StrideWidth, PaddingHeight, PaddingWidth, Type);
 }

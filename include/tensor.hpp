@@ -47,7 +47,7 @@ public:
     const float* ptr() const noexcept;
 
     [[nodiscard]]
-    size_t size() const noexcept;
+    size_t bytes() const noexcept;
 
     Storage(const Storage&) = delete;
 
@@ -63,6 +63,13 @@ public:
 // Tensor
 // ============================================================
 
+
+enum class DataType {
+    Float32,
+    Int32
+};
+
+
 class Tensor {
 private:
 
@@ -74,6 +81,9 @@ private:
     std::vector<size_t> strides_;
 
     bool is_view_ = false;
+
+
+    DataType dtype_ = DataType::Float32;
 
 private:
 
@@ -88,7 +98,8 @@ public:
 
     Tensor() = default;
 
-    explicit Tensor(const std::vector<size_t>& shape);
+
+    explicit Tensor(const std::vector<size_t>& shape, DataType dtype = DataType::Float32);
 
     explicit Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from_host = true);
 
@@ -131,6 +142,12 @@ public:
     const float* data() const noexcept;
 
     [[nodiscard]]
+    int* int_data() noexcept;
+
+    [[nodiscard]]
+    const int* int_data() const noexcept;
+
+    [[nodiscard]]
     bool is_view() const noexcept;
 
     void reshape(const std::vector<size_t>& new_shape);
@@ -145,15 +162,13 @@ public:
 
     void randomTensor(unsigned long long seed);
 
-    /*[[nodiscard]]
-    void* raw_ptr() noexcept;
-
-    [[nodiscard]]
-    const void* raw_ptr() const noexcept;*/
-
     void copyFromHost(const float* data, size_t count);
 
     void copyToHost(float* data, size_t count) const;
+
+    void copyFromHost(const int* data, size_t count);
+
+    void copyToHost(int* data, size_t count) const;
 
     void debug_print(const char* name, size_t elements) const;
 

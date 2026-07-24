@@ -20,3 +20,8 @@ FlattenLayer::FlattenLayer(const std::vector<size_t>& InputShape) {
 void FlattenLayer::forward(const Tensor& input, Tensor& output) {
     output = input.view(OutputShape);
 }
+
+
+void FlattenLayer::backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) {
+    gradInput = gradOutput.view(input.shape());
+}

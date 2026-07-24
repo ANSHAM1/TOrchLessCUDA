@@ -53,11 +53,6 @@ __global__ void softmaxKernel(const float* input, float* output, size_t Batch, s
 
 
 void outputForward(const Tensor& input, Tensor& output, const std::string& type) {
-    if (type == "Identity") {
-        output = input.view(input.shape());
-        return;
-    }
-
     if (type == "Sigmoid") {
         constexpr int Threads = 256;
         int Blocks = static_cast<int>((input.numel() + Threads - 1) / Threads);
