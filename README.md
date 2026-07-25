@@ -4,7 +4,7 @@ TorchLessCUDA is a deep learning framework built entirely from scratch using Mod
 
 ---
 
-# 🚀 Overview
+#  Overview
 
 Modern deep learning frameworks abstract away GPU programming, memory management, tensor operations, automatic differentiation, and optimization.
 
@@ -14,7 +14,7 @@ The project currently supports training and inference of neural networks entirel
 
 ---
 
-# ✨ Features
+#  Features
 
 ## Tensor Engine
 
