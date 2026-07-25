@@ -4,10 +4,12 @@
 #include "DataLoader.hpp"
 #include "MNISTLoader.hpp"
 
+#include <iomanip>
 
 
 
-int main() {
+
+static Sequential buildModel() {
     Sequential model;
 
     model.Input({ 60000,1,28,28 }, 32);
@@ -31,6 +33,63 @@ int main() {
     model.Output("Softmax");
 
 
+    return model;
+}
+
+
+
+constexpr int BatchSize = 32;
+constexpr int Epochs = 2;
+
+
+
+
+static void TrainingLoop(Sequential& model, ExecutionContext& ctx, Optimizer& opt, Loss& loss, Tensor& images, Tensor& labels) {
+    const size_t TotalSamples = images.shape()[0];
+    const size_t TotalBatches = (TotalSamples + BatchSize - 1) / BatchSize;
+
+    for (int epoch = 1; epoch <= Epochs; ++epoch) {
+        LoadImages imageLoader(images, BatchSize);
+        LoadLabels labelLoader(labels, BatchSize);
+
+        float EpochLoss = 0.0f;
+        size_t Batch = 0;
+
+        while (imageLoader.hasNext() && labelLoader.hasNext()) {
+            Tensor ImagesBatch = imageLoader.next();
+            Tensor LabelsBatch = labelLoader.next();
+
+            float LossValue = model.Train(ctx, loss, opt, ImagesBatch, LabelsBatch);
+
+            EpochLoss += LossValue;
+            ++Batch;
+
+            const int Progress = static_cast<int>(50.0 * Batch / TotalBatches);
+
+            std::cout << "\rEpoch " << epoch << "/" << Epochs << " [";
+
+            for (int i = 0; i < 50; ++i)
+                std::cout << (i < Progress ? '=' : ' ');
+
+            std::cout << "] "
+                << std::setw(3)
+                << static_cast<int>(100.0 * Batch / TotalBatches)
+                << "%";
+
+            std::cout.flush();
+        }
+
+        std::cout << "\nEpoch "
+            << epoch
+            << " Loss: "
+            << EpochLoss / Batch
+            << "\n\n";
+    }
+}
+
+
+int main() {
+    auto model = buildModel();
 
     Tensor Images =
         load_mnist_images(
@@ -42,36 +101,19 @@ int main() {
             "D:/PROJECTs/TorchLess/Dataset/train-labels.idx1-ubyte"
         );
 
-    LoadImages imageLoader(Images, 32);
-    LoadLabels labelLoader(Labels, 32);
 
     ExecutionContext ctx;
     Adam adam(1e-3f);
+    Loss loss("CCE");
 
-    while (imageLoader.hasNext() && labelLoader.hasNext()) {
-        Tensor batch = imageLoader.next();
-        Tensor label = labelLoader.next();
-
-        model.Train(ctx, adam,  batch, label);
-    }
+    TrainingLoop(model, ctx, adam, loss, Images, Labels);
 
 
- /*   DataLoader loader(Images, 32);
+    LoadImages predictionLoader(Images, 5);
+    Tensor TestBatch = predictionLoader.next();
+    Tensor& Prediction = model.Predict(ctx, TestBatch);
 
-    ExecutionContext ctx;*/
- /*   size_t batch_id = 0;
-    while (loader.hasNext()) {
-        Tensor batch = loader.next();
-
-        Tensor& prediction = model.Predict(ctx, batch);
-
-        if (batch_id < 3)
-            prediction.debug_print("prediction", 10);
-
-        batch_id++;
-    }
-
-    std::cout << "Total batches: " << batch_id << std::endl;*/
+    Prediction.debug_statistics_print("Prediction");
 
     return 0;
 }

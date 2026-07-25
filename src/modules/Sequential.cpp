@@ -190,147 +190,67 @@ Tensor& Sequential::forwardInference(ExecutionContext& Context, const Tensor& In
 
 
 
-void Sequential::Train(
-    ExecutionContext& Context,
-    Optimizer& Optimizer,
-    const Tensor& Input,
-    const Tensor& Label)
-{
+float Sequential::Train(ExecutionContext& Context, Loss& LossFun, Optimizer& Optimizer, const Tensor& Input, const Tensor& Label) {
     Context.compileTraining(Layers, InputShape);
 
-    Tensor& Prediction = forwardTraining(Context, Input);
+    Tensor& Prediction = forwardpropagation(Context, Input);
 
-    Loss LossFunction;
 
-    float LossValue =
-        LossFunction.forward(
-            Prediction,
-            Label
-        );
-
-    std::cout << "Loss: "
-        << LossValue
-        << std::endl;
-
+    float LossValue = LossFun.forward(Prediction, Label);
     Tensor LossGradient(Prediction.shape());
+    LossFun.backward(Prediction, Label, LossGradient);
 
-    LossFunction.backward(
-        Prediction,
-        Label,
-        LossGradient
-    );
 
-    backpropagation(
-        Context,
-        Input,
-        LossGradient
-    );
+    backpropagation(Context, Input, LossGradient);
 
-    Optimizer.step(
-        parameters(),
-        gradients()
-    );
+
+    Optimizer.step(parameters(), gradients());
+
+    return LossValue;
 }
 
 
 
 
-Tensor& Sequential::forwardTraining(ExecutionContext& Context, const Tensor& Input) {
-
+Tensor& Sequential::forwardpropagation(ExecutionContext& Context, const Tensor& Input) {
     Context.Activations[0] = Input.view(Input.shape());
-
-
     Tensor* Current = &Context.Activations[0];
 
-
-    for (size_t i = 0; i < Layers.size(); i++)
-    {
-
+    for (size_t i = 0; i < Layers.size(); i++) {
         Tensor& Next = Context.Activations[i + 1];
 
-
         if (Layers[i]->isViewOperation())
-        {
-            Layers[i]->forward(
-                *Current,
-                Next
-            );
-        }
-        else
-        {
+            Layers[i]->forward(*Current, Next );
+
+        else {
             Next.reshape(Layers[i]->getOutputShape());
 
-            Layers[i]->forward(
-                *Current,
-                Next
-            );
+            Layers[i]->forward(*Current, Next);
         }
 
-
         Current = &Next;
-
-
-   /*     if (i < 3)
-        {
-            std::cout << "Forward layer: "
-                << i
-                << std::endl;
-
-            Next.debug_statistics_print("Activation");
-        }*/
     }
-
 
     return *Current;
 }
 
 
-void Sequential::backpropagation(ExecutionContext& Context, const Tensor& Input, Tensor& GradOutput)
-{
+
+
+void Sequential::backpropagation(ExecutionContext& Context, const Tensor& Input, Tensor& GradOutput) {
     Tensor* CurrentGradient = &GradOutput;
 
-
-    for (int i = static_cast<int>(Layers.size()) - 1; i >= 0; i--)
-    {
-
+    for (int i = static_cast<int>(Layers.size()) - 1; i >= 0; i--) {
         Tensor& InputActivation = Context.Activations[i];
-
-        Tensor& OutputActivation = Context.Activations[i + 1];
-
+        Tensor& OutputActivation = Context.Activations[static_cast<std::vector<Tensor, std::allocator<Tensor>>::size_type>(i) + 1];
 
         Tensor& NextGradient = Context.Gradients[i];
 
 
-        NextGradient.reshape(
-            InputActivation.shape()
-        );
+        NextGradient.reshape(InputActivation.shape());
 
-
-        std::cout << "Layer " << i << " input shape: ";
-        for (auto x : InputActivation.shape())
-            std::cout << x << " ";
-        std::cout << std::endl;
-
-
-        Layers[i]->backward(
-            InputActivation,
-            OutputActivation,
-            *CurrentGradient,
-            NextGradient
-        );
-
+        Layers[i]->backward(InputActivation, OutputActivation, *CurrentGradient, NextGradient);
 
         CurrentGradient = &NextGradient;
-
-
-        std::cout << "Backward layer: "
-            << i
-            << std::endl;
-
-
-        //NextGradient.debug_statistics_print("Gradient");
     }
 }
-
-
-// -------------------------------------------------------------------------------------------------------------

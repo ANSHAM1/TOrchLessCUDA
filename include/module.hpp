@@ -267,7 +267,7 @@ private:
 
     Tensor& forwardInference(ExecutionContext& Context, const Tensor& Input);
 
-    Tensor& forwardTraining(ExecutionContext& Context, const Tensor& Input);
+    Tensor& forwardpropagation(ExecutionContext& Context, const Tensor& Input);
     void backpropagation(ExecutionContext& Context, const Tensor& Input, Tensor& GradOutput);
 
 public:
@@ -297,7 +297,7 @@ public:
 
     Tensor& Predict(ExecutionContext& Context, const Tensor& Input);
 
-    void Train(ExecutionContext& Context, Optimizer& Otm, const Tensor& Input, const Tensor& Label);
+    float Train(ExecutionContext& Context, Loss& LossFun, Optimizer& Optimizer, const Tensor& Input, const Tensor& Label);
 
     
 
