@@ -10,6 +10,7 @@
 
 constexpr int TILE_SIZE = 16;
 
+
 __global__ void denseForwardKernel(const float* input, const float* weight, const float* bias, float* output,
     size_t Batch, size_t InFeatures, size_t OutFeatures) {
 
@@ -55,6 +56,8 @@ __global__ void denseForwardKernel(const float* input, const float* weight, cons
 }
 
 
+
+
 void denseForward(const Tensor& input, const Tensor& weight, const Tensor& bias, Tensor& output) {
     const auto& inputShape = input.shape();
 
@@ -75,19 +78,6 @@ void denseForward(const Tensor& input, const Tensor& weight, const Tensor& bias,
 
 
 
-
-
-
-
-
-
-// ------------------------------------------------------------
-// dInput = dOutput * Weight^T
-//
-// gradOutput : [Batch, Out]
-// Weight     : [In, Out]
-// gradInput  : [Batch, In]
-// ------------------------------------------------------------
 
 __global__ void denseInputBackwardKernel(const float* gradOutput, const float* weight, float* gradInput, 
     size_t Batch, size_t InFeatures, size_t OutFeatures) {
@@ -110,13 +100,7 @@ __global__ void denseInputBackwardKernel(const float* gradOutput, const float* w
 }
 
 
-// ------------------------------------------------------------
-// dWeight = X^T * dOutput
-//
-// input      : [Batch, In]
-// gradOutput : [Batch, Out]
-// gradWeight : [In, Out]
-// ------------------------------------------------------------
+
 
 __global__ void denseWeightBackwardKernel(const float* input, const float* gradOutput, float* gradWeight, 
     size_t Batch, size_t InFeatures, size_t OutFeatures) {
@@ -139,9 +123,7 @@ __global__ void denseWeightBackwardKernel(const float* input, const float* gradO
 }
 
 
-// ------------------------------------------------------------
-// dBias = sum(dOutput over batch)
-// ------------------------------------------------------------
+
 
 __global__ void denseBiasBackwardKernel(const float* gradOutput, float* gradBias, size_t Batch, size_t OutFeatures) {
     size_t out = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -155,6 +137,8 @@ __global__ void denseBiasBackwardKernel(const float* gradOutput, float* gradBias
 
     gradBias[out] = sum;
 }
+
+
 
 
 void denseInputBackward(const Tensor& gradOutput, const Tensor& weight, Tensor& gradInput) {
@@ -174,6 +158,8 @@ void denseInputBackward(const Tensor& gradOutput, const Tensor& weight, Tensor& 
 }
 
 
+
+
 void denseWeightBackward(const Tensor& input, const Tensor& gradOutput, Tensor& gradWeight) {
     size_t Batch = input.shape()[0];
     size_t In = input.shape()[1];
@@ -189,6 +175,8 @@ void denseWeightBackward(const Tensor& input, const Tensor& gradOutput, Tensor& 
     ExecuteKernel("denseWeightBackwardKernel", blocks, threads, 0, 0, denseWeightBackwardKernel, input.data(),
         gradOutput.data(), gradWeight.data(), Batch, In, Out);
 }
+
+
 
 
 void denseBiasBackward(const Tensor& gradOutput, Tensor& gradBias) {

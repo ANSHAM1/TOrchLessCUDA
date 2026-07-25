@@ -10,6 +10,8 @@
 
 
 
+
+
 __global__ void SoftmaxCCELossKernel(const float* prediction, const int* labels, float* loss, size_t Batch, size_t Classes) {
     size_t batch = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
@@ -24,6 +26,9 @@ __global__ void SoftmaxCCELossKernel(const float* prediction, const int* labels,
 
     loss[batch] = -logf(probability);
 }
+
+
+
 
 
 float SoftmaxCCELoss(const Tensor& prediction, const Tensor& labels) {
@@ -72,6 +77,8 @@ __global__ void SoftmaxCCELossBackwardKernel(const float* prediction, const int*
 
     grad[idx] = value;
 }
+
+
 
 
 void SoftmaxCCELossBackward(const Tensor& prediction, const Tensor& labels, Tensor& grad) {

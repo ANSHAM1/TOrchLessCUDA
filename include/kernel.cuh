@@ -4,6 +4,8 @@
 #include <string>
 
 
+
+
 // util kernels
 
 void tensorAssign(float* ptr, std::size_t value, std::size_t n);
@@ -13,9 +15,10 @@ void tensorAssignRandom(float* data, std::size_t size, unsigned long long seed);
 void uniformDist(float* data, size_t size, unsigned long long seed, float min, float max);
 
 
+
+
 class Tensor;
 // kernels
-
 
 
 // Convolution kernels

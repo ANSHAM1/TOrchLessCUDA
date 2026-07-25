@@ -10,16 +10,18 @@ find_package(CUDAToolkit REQUIRED)
 add_executable(app
     main.cpp
 
-    src/tensor.cpp
     src/util_kernels.cu
 
-    src/modules/Sequential.cpp
-    src/modules/ActivationLayer.cpp 
-    src/modules/FlattenLayer.cpp
-    src/modules/Conv2dLayer.cpp
-    src/modules/PoolingLayer.cpp
-    src/modules/DenseLayer.cpp
-    src/modules/OutputLayer.cpp
+    src/layers/ActivationLayer.cpp 
+    src/layers/FlattenLayer.cpp
+    src/layers/Conv2dLayer.cpp
+    src/layers/PoolingLayer.cpp
+    src/layers/DenseLayer.cpp
+    src/layers/OutputLayer.cpp
+
+    src/modules/tensor.cpp 
+    src/modules/sequential.cpp
+    src/modules/execution_ctx.cpp
 
     src/losses/loss.cpp
     src/losses/SoftmaxCCE.cu

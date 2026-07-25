@@ -12,6 +12,7 @@
 
 
 
+
 __global__ void sigmoidOutKernel(const float* input, float* output, size_t size) {
     size_t idx =
         static_cast<size_t>(blockIdx.x) * blockDim.x +
@@ -22,6 +23,8 @@ __global__ void sigmoidOutKernel(const float* input, float* output, size_t size)
 
     output[idx] = 1.0f / (1.0f + expf(-input[idx]));
 }
+
+
 
 
 __global__ void softmaxKernel(const float* input, float* output, size_t Batch, size_t Classes) {
@@ -50,6 +53,8 @@ __global__ void softmaxKernel(const float* input, float* output, size_t Batch, s
     for (size_t i = 0; i < Classes; i++)
         output[baseIdx + i] /= sumExp;
 }
+
+
 
 
 void outputForward(const Tensor& input, Tensor& output, const std::string& type) {

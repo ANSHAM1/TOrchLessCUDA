@@ -10,34 +10,43 @@
 
 
 
+class Layer;
 
 
-// Execution Context
+
+
 class ExecutionContext {
+
 public:
 
-    // Inference Workspace
     Tensor WorkspaceA;
     Tensor WorkspaceB;
 
-    // Training Buffers
     std::vector<Tensor> Activations;
     std::vector<Tensor> Gradients;
 
-    // Shared Scratch Memory
-    Tensor Workspace;
-
-
     bool IsCompiled = false;
+
+public:
+
+    void compileInference(
+        const std::vector<std::unique_ptr<Layer>>& Layers,
+        const std::vector<size_t>& InputShape
+    );
+
+
+    void compileTraining(
+        const std::vector<std::unique_ptr<Layer>>& Layers,
+        const std::vector<size_t>& InputShape
+    );
+
 };
 
 
 
-
-
-
-// Loss 
+ 
 class Loss {
+
 private:
 
     std::string Type;
@@ -46,21 +55,18 @@ public:
 
     Loss(const std::string& type = "CCE") : Type(type) {}
 
-    // Forward loss value
+
     float forward(const Tensor& prediction, const Tensor& target) const;
 
-    // Gradient w.r.t prediction
     void backward(const Tensor& prediction, const Tensor& target, Tensor& grad) const;
+
 };
 
 
 
 
-
-
-
-// Base Layer
 class Layer {
+
 protected:
 
     std::vector<size_t> OutputShape;
@@ -70,7 +76,6 @@ public:
     virtual ~Layer() = default;
 
     virtual void initialize() {}
-
 
     virtual void forward(const Tensor& input, Tensor& output) = 0;
 
@@ -91,20 +96,19 @@ public:
     const std::vector<size_t>& getOutputShape() const {
         return OutputShape;
     }
+
 };
 
 
 
 
-// Convolution Layer
 class Conv2dLayer : public Layer {
+
 public:
 
-    //Parameters:
     Tensor Kernel;
     Tensor Bias;
 
-    //Gradients:
     Tensor KernelGrad;
     Tensor BiasGrad;
 
@@ -125,11 +129,14 @@ public:
     std::vector<Tensor*> gradients() override {
         return { &KernelGrad, &BiasGrad };
     }
+
 };
 
 
-// Activation Layer
+
+
 class ActivationLayer : public Layer {
+
 public:
 
     std::string Type;
@@ -139,11 +146,14 @@ public:
     void forward(const Tensor& input, Tensor& output) override;
 
     void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
+
 };
 
 
-// Pooling Layer
+
+
 class PoolingLayer : public Layer {
+
 public:
 
     size_t KernelHeight;
@@ -163,11 +173,14 @@ public:
     void forward(const Tensor& input, Tensor& output) override;
 
     void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
+
 };
 
 
-// Flatten Layer
+
+
 class FlattenLayer : public Layer {
+
 public:
 
     FlattenLayer(const std::vector<size_t>& inputShape);
@@ -179,18 +192,19 @@ public:
     bool isViewOperation() const override {
         return true;
     }
+
 };
 
 
-// Dense / Linear Layer
+
+
 class DenseLayer : public Layer {
+
 public:
 
-    //Parameters:
     Tensor Weight;
     Tensor Bias;
 
-    //Gradients:
     Tensor WeightGrad;
     Tensor BiasGrad;
 
@@ -209,11 +223,14 @@ public:
     std::vector<Tensor*> gradients() override {
         return { &WeightGrad, &BiasGrad };
     }
+
 };
 
 
-// Output Layer
+
+
 class OutputLayer : public Layer {
+
 public:
 
     std::string Type;
@@ -223,14 +240,14 @@ public:
     void forward(const Tensor& input, Tensor& output) override;
 
     void backward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) override;
+
 };
 
 
 
 
-
-// Sequential Model
 class Sequential {
+
 private:
 
     std::vector<std::unique_ptr<Layer>> Layers;
@@ -243,15 +260,9 @@ private:
 
 private:
 
-    // Inference
-    void compileInference(ExecutionContext& Context);
     Tensor& forwardInference(ExecutionContext& Context, const Tensor& Input);
 
-    // Training
-    void compileTraining(ExecutionContext& Context);
     Tensor& forwardTraining(ExecutionContext& Context, const Tensor& Input);
-
-
     void backpropagation(ExecutionContext& Context, const Tensor& Input, Tensor& GradOutput);
 
 public:
@@ -296,4 +307,5 @@ public:
 
         return Params;
     }
+
 };

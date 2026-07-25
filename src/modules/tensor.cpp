@@ -6,11 +6,9 @@
 
 
 
-// ============================================================
-// CUDA Memory Storage
-// ============================================================
 
 Storage::Storage() noexcept : ptr_(nullptr), count_(0) {}
+
 
 
 // Move Constructor
@@ -18,6 +16,7 @@ Storage::Storage(Storage&& other) noexcept : ptr_(other.ptr_), count_(other.coun
     other.ptr_ = nullptr;
     other.count_ = 0;
 }
+
 
 
 // Move Assignment
@@ -36,6 +35,8 @@ Storage& Storage::operator=(Storage&& other) noexcept {
 }
 
 
+
+
 void Storage::allocate(size_t count) {
     release();
 
@@ -52,6 +53,8 @@ void Storage::allocate(size_t count) {
 }
 
 
+
+
 void Storage::release() noexcept {
     if (ptr_) {
         cudaFree(ptr_);
@@ -59,6 +62,8 @@ void Storage::release() noexcept {
         count_ = 0;
     }
 }
+
+
 
 
 /*
@@ -72,10 +77,14 @@ float* Storage::ptr() noexcept {
 }
 
 
+
+
 [[nodiscard]]
 const float* Storage::ptr() const noexcept {
     return ptr_;
 }
+
+
 
 
 [[nodiscard]]
@@ -84,10 +93,14 @@ size_t Storage::size() const noexcept {
 }
 
 
+
+
 [[nodiscard]]
 size_t Storage::bytes() const noexcept {
     return count_ * sizeof(float);
 }
+
+
 
 
 Storage::~Storage() {
@@ -97,9 +110,7 @@ Storage::~Storage() {
 
 
 
-// ============================================================
-// Tensor
-// ============================================================
+
 
 size_t Tensor::shape_product(const std::vector<size_t>& shape) {
     if (shape.empty())
@@ -112,6 +123,8 @@ size_t Tensor::shape_product(const std::vector<size_t>& shape) {
         std::multiplies<size_t>()
     );
 }
+
+
 
 
 std::vector<size_t> Tensor::compute_strides(const std::vector<size_t>& shape) {
@@ -132,12 +145,16 @@ std::vector<size_t> Tensor::compute_strides(const std::vector<size_t>& shape) {
 }
 
 
+
+
 Tensor::Tensor(float* ptr, const std::vector<size_t>& shape, const std::vector<size_t>& strides, DataType dtype)
     : data_ptr_(ptr), shape_(shape), strides_(strides), is_view_(true), dtype_(dtype) {
 
     if (ptr == nullptr)
         throw std::runtime_error("Cannot create view from null pointer");
 }
+
+
 
 
 Tensor::Tensor(const std::vector<size_t>& shape, DataType dtype)
@@ -148,6 +165,8 @@ Tensor::Tensor(const std::vector<size_t>& shape, DataType dtype)
     if (n > 0)
         storage_.allocate(n);
 }
+
+
 
 
 Tensor::Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from_host)
@@ -170,6 +189,7 @@ Tensor::Tensor(const std::vector<size_t>& shape, const float* raw_ptr, bool from
 }
 
 
+
 // Move Constructor
 Tensor::Tensor(Tensor&& other) noexcept : storage_(std::move(other.storage_)), data_ptr_(other.data_ptr_), 
     shape_(std::move(other.shape_)), strides_(std::move(other.strides_)), is_view_(other.is_view_) {
@@ -177,6 +197,7 @@ Tensor::Tensor(Tensor&& other) noexcept : storage_(std::move(other.storage_)), d
     other.data_ptr_ = nullptr;
     other.is_view_ = false;
 }
+
 
 
 // Move Assignment
@@ -199,6 +220,8 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
 }
 
 
+
+
 void Tensor::allocate(const std::vector<size_t>& shape) {
     if (is_view_)
         throw std::runtime_error("Cannot allocate memory for a Tensor view");
@@ -211,6 +234,8 @@ void Tensor::allocate(const std::vector<size_t>& shape) {
     shape_ = shape;
     strides_ = compute_strides(shape_);
 }
+
+
 
 
 Tensor Tensor::zeros(const std::vector<size_t>& shape) {
@@ -227,85 +252,6 @@ Tensor Tensor::zeros(const std::vector<size_t>& shape) {
 }
 
 
-[[nodiscard]]
-Tensor Tensor::view(const std::vector<size_t>& new_shape) const {
-    if (shape_product(new_shape) != numel())
-        throw std::runtime_error("Invalid view shape");
-    
-    return Tensor(const_cast<float*>(data()), new_shape, compute_strides(new_shape), dtype_);
-}
-
-
-[[nodiscard]]
-const std::vector<size_t>& Tensor::shape() const {
-    return shape_;
-}
-
-
-[[nodiscard]]
-const std::vector<size_t>& Tensor::strides() const {
-    return strides_;
-}
-
-
-[[nodiscard]]
-size_t Tensor::dim() const noexcept {
-    return shape_.size();
-}
-
-
-[[nodiscard]]
-size_t Tensor::numel() const noexcept {
-    return shape_product(shape_);
-}
-
-
-[[nodiscard]]
-bool Tensor::allocated() const noexcept {
-    return is_view_ || storage_.size() > 0;
-}
-
-
-[[nodiscard]]
-float* Tensor::data() noexcept {
-    if (is_view_)
-        return data_ptr_;
-
-    return storage_.ptr();
-}
-
-
-[[nodiscard]]
-const float* Tensor::data() const noexcept {
-    if (is_view_)
-        return data_ptr_;
-
-    return storage_.ptr();
-}
-
-
-[[nodiscard]]
-int* Tensor::int_data() noexcept{
-    if (is_view_)
-        return reinterpret_cast<int*>(data_ptr_);
-
-    return reinterpret_cast<int*>(storage_.ptr());
-}
-
-
-[[nodiscard]]
-const int* Tensor::int_data() const noexcept {
-    if (is_view_)
-        return reinterpret_cast<const int*>(data_ptr_);
-
-    return reinterpret_cast<const int*>(storage_.ptr());
-}
-
-
-[[nodiscard]]
-bool Tensor::is_view() const noexcept {
-    return is_view_;
-}
 
 
 void Tensor::reshape(const std::vector<size_t>& new_shape) {
@@ -321,26 +267,7 @@ void Tensor::reshape(const std::vector<size_t>& new_shape) {
 }
 
 
-[[nodiscard]]
-float* Tensor::offset_ptr(size_t offset) {
-    if (offset >= numel())
-        throw std::out_of_range(
-            "Tensor offset out of range"
-        );
 
-    return storage_.ptr() + offset;
-}
-
-
-[[nodiscard]]
-const float* Tensor::offset_ptr(size_t offset) const {
-    if (offset >= numel())
-        throw std::out_of_range(
-            "Tensor offset out of range"
-        );
-
-    return storage_.ptr() + offset;
-}
 
 
 void Tensor::fill(float value) {
@@ -358,9 +285,109 @@ void Tensor::fill(float value) {
 }
 
 
-void Tensor::randomTensor(unsigned long long seed) {
-    tensorAssignRandom(data(), numel(), seed);
+
+
+[[nodiscard]]
+Tensor Tensor::view(const std::vector<size_t>& new_shape) const {
+    if (shape_product(new_shape) != numel())
+        throw std::runtime_error("Invalid view shape");
+    
+    return Tensor(const_cast<float*>(data()), new_shape, compute_strides(new_shape), dtype_);
 }
+
+
+
+
+[[nodiscard]]
+const std::vector<size_t>& Tensor::shape() const {
+    return shape_;
+}
+
+
+
+
+[[nodiscard]]
+const std::vector<size_t>& Tensor::strides() const {
+    return strides_;
+}
+
+
+
+
+[[nodiscard]]
+size_t Tensor::dim() const noexcept {
+    return shape_.size();
+}
+
+
+
+
+[[nodiscard]]
+size_t Tensor::numel() const noexcept {
+    return shape_product(shape_);
+}
+
+
+
+
+[[nodiscard]]
+bool Tensor::allocated() const noexcept {
+    return is_view_ || storage_.size() > 0;
+}
+
+
+
+
+[[nodiscard]]
+float* Tensor::data() noexcept {
+    if (is_view_)
+        return data_ptr_;
+
+    return storage_.ptr();
+}
+
+
+
+
+[[nodiscard]]
+const float* Tensor::data() const noexcept {
+    if (is_view_)
+        return data_ptr_;
+
+    return storage_.ptr();
+}
+
+
+
+
+[[nodiscard]]
+int* Tensor::int_data() noexcept{
+    if (is_view_)
+        return reinterpret_cast<int*>(data_ptr_);
+
+    return reinterpret_cast<int*>(storage_.ptr());
+}
+
+
+
+
+[[nodiscard]]
+const int* Tensor::int_data() const noexcept {
+    if (is_view_)
+        return reinterpret_cast<const int*>(data_ptr_);
+
+    return reinterpret_cast<const int*>(storage_.ptr());
+}
+
+
+
+
+[[nodiscard]]
+bool Tensor::is_view() const noexcept {
+    return is_view_;
+}
+
+
 
 
 void Tensor::copyFromHost(const float* data, size_t count) {
@@ -376,6 +403,8 @@ void Tensor::copyFromHost(const float* data, size_t count) {
 }
 
 
+
+
 void Tensor::copyToHost(float* data, size_t count) const {
     if (dtype_ != DataType::Float32)
         throw std::runtime_error("Tensor is not Float32");
@@ -387,6 +416,8 @@ void Tensor::copyToHost(float* data, size_t count) const {
         cudaMemcpy(data, this->data(), count * sizeof(float), cudaMemcpyDeviceToHost)
     );
 }
+
+
 
 
 void Tensor::copyFromHost(const int* data, size_t count) {
@@ -401,6 +432,9 @@ void Tensor::copyFromHost(const int* data, size_t count) {
     );
 }
 
+
+
+
 void Tensor::copyToHost(int* data, size_t count) const {
     if (dtype_ != DataType::Int32)
         throw std::runtime_error("Tensor is not Int32");
@@ -414,29 +448,28 @@ void Tensor::copyToHost(int* data, size_t count) const {
 }
 
 
-void Tensor::debug_print(const char* name, size_t elements) const {
 
+
+void Tensor::debug_print(const char* name, size_t elements) const {
     std::cerr << "[Tensor " << name << "] shape=(";
 
-    for (size_t i = 0; i < shape_.size(); ++i)
-    {
+    for (size_t i = 0; i < shape_.size(); ++i) {
         if (i)
             std::cerr << ",";
 
         std::cerr << shape_[i];
     }
 
-    std::cerr << ") numel="
-        << numel()
-        << " bytes=";
+    std::cerr << ") numel=" << numel() << " bytes=";
 
     if (dtype_ == DataType::Float32)
         std::cerr << numel() * sizeof(float);
+
     else
         std::cerr << numel() * sizeof(int);
 
-    std::cerr << "\n";
 
+    std::cerr << "\n";
 
     if (elements == 0)
         return;
@@ -444,49 +477,35 @@ void Tensor::debug_print(const char* name, size_t elements) const {
 
     elements = std::min(elements, numel());
 
-
     std::cout << "Values: ";
 
 
-    if (dtype_ == DataType::Float32)
-    {
+    if (dtype_ == DataType::Float32) {
         std::vector<float> host(elements);
 
-
-        copyToHost(
-            host.data(),
-            elements
-        );
+        copyToHost(host.data(), elements);
 
 
-        for (size_t i = 0; i < elements; i++)
-        {
+        for (size_t i = 0; i < elements; i++) {
             std::cout << host[i];
 
             if (i + 1 < elements)
                 std::cout << " ";
         }
     }
-    else if (dtype_ == DataType::Int32)
-    {
+    else if (dtype_ == DataType::Int32) {
         std::vector<int> host(elements);
 
-
-        copyToHost(
-            host.data(),
-            elements
-        );
+        copyToHost(host.data(), elements);
 
 
-        for (size_t i = 0; i < elements; i++)
-        {
+        for (size_t i = 0; i < elements; i++) {
             std::cout << host[i];
 
             if (i + 1 < elements)
                 std::cout << " ";
         }
     }
-
 
     std::cout << "\n";
 }

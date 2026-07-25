@@ -2,11 +2,15 @@
 #define __MACROS_HPP__
 
 
+
+
 #ifdef __CUDACC__
 #define IF_CUDA_AVAILABLE(code) code
 #else
 #define IF_CUDA_AVAILABLE(code)
 #endif
+
+
 
 
 #ifdef USE_CUDA
@@ -21,6 +25,8 @@
 #else
 #define CUDA_CHECK(call) do { (void)call; } while(0)
 #endif
+
+
 
 
 #endif// Macros.hpp

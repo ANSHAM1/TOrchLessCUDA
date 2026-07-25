@@ -7,6 +7,8 @@
 #include <cmath>
 
 
+
+
 __global__ void reluKernel(const float* input, float* output, size_t size) {
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
@@ -15,6 +17,7 @@ __global__ void reluKernel(const float* input, float* output, size_t size) {
 
     output[idx] = input[idx] > 0.0f ? input[idx] : 0.0f;
 }
+
 
 
 
@@ -29,6 +32,7 @@ __global__ void sigmoidKernel(const float* input, float* output, size_t size) {
 
 
 
+
 __global__ void tanhKernel(const float* input, float* output, size_t size) {
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
@@ -37,6 +41,8 @@ __global__ void tanhKernel(const float* input, float* output, size_t size) {
 
     output[idx] = tanhf(input[idx]);
 }
+
+
 
 
 void activationForward(const Tensor& input, Tensor& output, const std::string& type) {
@@ -65,13 +71,6 @@ void activationForward(const Tensor& input, Tensor& output, const std::string& t
 
 
 
-
-// ============================================================
-// ReLU Backward
-//
-// gradInput = gradOutput * (input > 0)
-// ============================================================
-
 __global__ void reluBackwardKernel(const float* input, const float* gradOutput, float* gradInput, size_t size) {
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
@@ -80,6 +79,8 @@ __global__ void reluBackwardKernel(const float* input, const float* gradOutput, 
 
     gradInput[idx] = (input[idx] > 0.0f) ? gradOutput[idx] : 0.0f;
 }
+
+
 
 
 static void reluBackward(const Tensor& input, const Tensor& gradOutput, Tensor& gradInput) {
@@ -93,17 +94,7 @@ static void reluBackward(const Tensor& input, const Tensor& gradOutput, Tensor& 
 }
 
 
-// ============================================================
-// Sigmoid Backward
-//
-// sigmoid derivative:
-//
-// y * (1-y)
-//
-// gradInput = gradOutput * output * (1-output)
-//
-// Here output is sigmoid output
-// ============================================================
+
 
 __global__ void sigmoidBackwardKernel(const float* output, const float* gradOutput, float* gradInput, size_t size) {
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -115,6 +106,8 @@ __global__ void sigmoidBackwardKernel(const float* output, const float* gradOutp
 
     gradInput[idx] = gradOutput[idx] * y * (1.0f - y);
 }
+
+
 
 
 static void sigmoidBackward(const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) {
@@ -130,16 +123,7 @@ static void sigmoidBackward(const Tensor& output, const Tensor& gradOutput, Tens
 }
 
 
-// ============================================================
-// Tanh Backward
-//
-// derivative:
-//
-// 1 - y^2
-//
-// gradInput = gradOutput * (1-y*y)
-//
-// ============================================================
+
 
 __global__ void tanhBackwardKernel(const float* output, const float* gradOutput, float* gradInput, size_t size) {
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -153,6 +137,8 @@ __global__ void tanhBackwardKernel(const float* output, const float* gradOutput,
 }
 
 
+
+
 static void tanhBackward(const Tensor& output, const Tensor& gradOutput, Tensor& gradInput) {
     size_t size = output.numel();
 
@@ -164,6 +150,8 @@ static void tanhBackward(const Tensor& output, const Tensor& gradOutput, Tensor&
     ExecuteKernel("tanhBackwardKernel", blocks, threads, 0, 0, tanhBackwardKernel, output.data(),
         gradOutput.data(), gradInput.data(), size);
 }
+
+
 
 
 void activationBackward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput, const std::string& Type) {

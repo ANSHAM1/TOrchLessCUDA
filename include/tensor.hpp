@@ -11,11 +11,10 @@
 #include <new>
 
 
-// ============================================================
-// CUDA Memory Storage
-// ============================================================
+
 
 class Storage {
+
 private:
 
     float* ptr_;
@@ -35,6 +34,7 @@ public:
 
     void release() noexcept;
 
+
     /*
         * [[nodiscard]] is a C++17 attribute (also in C++20/23) that tells the compiler:
         * If the return value of this function (or type) is ignored(not assigned to variable), issue a warning.
@@ -52,6 +52,8 @@ public:
     [[nodiscard]]
     size_t bytes() const noexcept;
 
+
+
     Storage(const Storage&) = delete;
 
     Storage& operator=(const Storage&) = delete;
@@ -62,18 +64,16 @@ public:
 
 
 
-// ============================================================
-// Tensor
-// ============================================================
-
-
 enum class DataType {
     Float32,
     Int32
 };
 
 
+
+
 class Tensor {
+
 private:
 
     Storage storage_;
@@ -120,6 +120,12 @@ public:
 
     static Tensor zeros(const std::vector<size_t>& shape);
 
+    void reshape(const std::vector<size_t>& new_shape);
+
+    void fill(float value);
+
+
+
     [[nodiscard]]
     Tensor view(const std::vector<size_t>& new_shape) const;
 
@@ -153,17 +159,7 @@ public:
     [[nodiscard]]
     bool is_view() const noexcept;
 
-    void reshape(const std::vector<size_t>& new_shape);
 
-    [[nodiscard]]
-    float* offset_ptr(size_t offset = 0);
-
-    [[nodiscard]]
-    const float* offset_ptr(size_t offset = 0) const;
-
-    void fill(float value);
-
-    void randomTensor(unsigned long long seed);
 
     void copyFromHost(const float* data, size_t count);
 

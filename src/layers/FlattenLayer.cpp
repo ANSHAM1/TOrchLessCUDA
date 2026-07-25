@@ -1,4 +1,5 @@
-#include "layer.hpp"
+#include "module.hpp"
+
 
 
 
@@ -14,7 +15,6 @@ FlattenLayer::FlattenLayer(const std::vector<size_t>& inputShape) {
 
     OutputShape = { Batch, Features };
 }
-
 
 
 void FlattenLayer::forward(const Tensor& input, Tensor& output) {

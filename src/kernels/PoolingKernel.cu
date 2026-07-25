@@ -46,6 +46,8 @@ __global__ void maxPoolingKernel(const float* input, float* output, size_t N, si
 }
 
 
+
+
 __global__ void avgPoolingKernel(const float* input, float* output, size_t N, size_t C, size_t H, size_t W, size_t OH, 
     size_t OW, size_t KH, size_t KW, size_t SH, size_t SW, size_t PH, size_t PW) {
 
@@ -82,6 +84,8 @@ __global__ void avgPoolingKernel(const float* input, float* output, size_t N, si
     
     output[idx] = sum / count;
 }
+
+
 
 
 void poolingForward(const Tensor& input, Tensor& output, size_t kernelHeight, size_t kernelWidth, size_t strideHeight,
@@ -186,6 +190,8 @@ __global__ void maxPoolingBackwardKernel(const float* input, const float* gradOu
 }
 
 
+
+
 __global__ void avgPoolingBackwardKernel(const float* gradOutput, float* gradInput, size_t Batch, size_t Channels,
     size_t InputHeight, size_t InputWidth, size_t OutputHeight, size_t OutputWidth, size_t KernelHeight, size_t KernelWidth,
     size_t StrideHeight, size_t StrideWidth, size_t PaddingHeight, size_t PaddingWidth) {
@@ -233,6 +239,8 @@ __global__ void avgPoolingBackwardKernel(const float* gradOutput, float* gradInp
 
     gradInput[idx] = gradient;
 }
+
+
 
 
 void poolingBackward(const Tensor& input, const Tensor& output, const Tensor& gradOutput, Tensor& gradInput, size_t KernelHeight,

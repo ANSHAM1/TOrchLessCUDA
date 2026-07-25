@@ -84,6 +84,9 @@ __global__ void conv2dForwardKernel(const float* input, const float* kernel, con
         output[((batch_idx * K + kernel_idx) * OH + out_y) * OW + out_x] = accumulator + bias[kernel_idx];
 }
 
+
+
+
 void conv2dForward(const Tensor& input, const Tensor& kernel, const Tensor& bias, Tensor& output, size_t stride, size_t padding) {
     const auto& I_Shape = input.shape();
     const auto& K_Shape = kernel.shape();
@@ -168,6 +171,8 @@ __global__ void conv2dInputBackwardKernel(const float* gradOutput, const float* 
 }
 
 
+
+
 void conv2dInputBackward(const Tensor& gradOutput, const Tensor& kernel, Tensor& gradInput, size_t stride, size_t padding) {
     auto& IShape = gradInput.shape();
     auto& KShape = kernel.shape();
@@ -197,7 +202,10 @@ void conv2dInputBackward(const Tensor& gradOutput, const Tensor& kernel, Tensor&
 }
 
 
+
+
 constexpr auto TILE_SIZE = 16;
+
 
 __global__ void conv2dWeightBackwardKernel(const float* input, const float* gradOutput, float* gradKernel,
     const int N, const int C, const int H, const int W, const int K, const int KH, const int KW,
@@ -275,6 +283,8 @@ __global__ void conv2dWeightBackwardKernel(const float* input, const float* grad
 }
 
 
+
+
 void conv2dWeightBackward(const Tensor& input, const Tensor& gradOutput, Tensor& gradKernel, size_t stride, size_t padding) {
     auto& IShape = input.shape();
     auto& KShape = gradKernel.shape();
@@ -305,6 +315,7 @@ void conv2dWeightBackward(const Tensor& input, const Tensor& gradOutput, Tensor&
 
 
 
+
 __global__ void conv2dBiasBackwardKernel(const float* gradOutput, float* gradBias, const int N, const int K, const int OH, const int OW) {
     size_t idx = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
@@ -320,6 +331,8 @@ __global__ void conv2dBiasBackwardKernel(const float* gradOutput, float* gradBia
 
     gradBias[idx] = sum;
 }
+
+
 
 
 void conv2dBiasBackward(const Tensor& gradOutput, Tensor& gradBias) {

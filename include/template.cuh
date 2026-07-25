@@ -2,6 +2,9 @@
 
 #include "cuda_runtime.h"
 
+
+
+
 template<typename KernelFunc, typename... Args>
 cudaError_t ExecuteKernel(const char* label, dim3 blocks, dim3 threads, size_t sharedMem,
     cudaStream_t stream, KernelFunc Kernel, Args&&... args) {

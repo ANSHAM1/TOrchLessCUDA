@@ -1,4 +1,4 @@
-#include "layer.hpp"
+#include "module.hpp"
 
 #include "DataLoader.hpp"
 #include "MNISTLoader.hpp"
