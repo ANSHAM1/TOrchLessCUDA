@@ -30,7 +30,8 @@ public:
     std::vector<Tensor> Activations;
     std::vector<Tensor> Gradients;
 
-    bool IsCompiled = false;
+    bool TrainingCompiled = false;
+    bool InferenceCompiled = false;
 
 public:
 

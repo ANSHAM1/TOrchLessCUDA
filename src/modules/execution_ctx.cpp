@@ -6,7 +6,7 @@
 
 
 void ExecutionContext::compileInference(const std::vector<std::unique_ptr<Layer>>& Layers, const std::vector<size_t>& InputShape) {
-    if (IsCompiled)
+    if (InferenceCompiled)
         return;
 
     // Find Largest Activation Tensor
@@ -27,14 +27,14 @@ void ExecutionContext::compileInference(const std::vector<std::unique_ptr<Layer>
     WorkspaceA.allocate(LargestShape);
     WorkspaceB.allocate(LargestShape);
 
-    IsCompiled = true;
+    InferenceCompiled = true;
 }
 
 
 
 
 void ExecutionContext::compileTraining(const std::vector<std::unique_ptr<Layer>>& Layers, const std::vector<size_t>& InputShape) {
-    if (IsCompiled)
+    if (TrainingCompiled)
         return;
 
     Activations.clear();
@@ -71,5 +71,5 @@ void ExecutionContext::compileTraining(const std::vector<std::unique_ptr<Layer>>
     }
 
 
-    IsCompiled = true;
+    TrainingCompiled = true;
 }
