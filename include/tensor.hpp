@@ -169,7 +169,7 @@ public:
 
     void copyToHost(int* data, size_t count) const;
 
-    void debug_print(const char* name, size_t elements) const;
+    void debug_statistics_print(const char* name) const;
 
     ~Tensor() = default;
 };

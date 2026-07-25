@@ -3,7 +3,8 @@
 #include <iostream>
 #include <numeric>
 #include <functional>
-
+#include <algorithm>
+#include <cmath>
 
 
 
@@ -450,62 +451,80 @@ void Tensor::copyToHost(int* data, size_t count) const {
 
 
 
-void Tensor::debug_print(const char* name, size_t elements) const {
-    std::cerr << "[Tensor " << name << "] shape=(";
+void Tensor::debug_statistics_print(const char* name) const {
+    std::vector<float> host(numel());
 
-    for (size_t i = 0; i < shape_.size(); ++i) {
-        if (i)
-            std::cerr << ",";
+    copyToHost(host.data(), numel());
 
-        std::cerr << shape_[i];
+    float minValue = FLT_MAX;
+    float maxValue = -FLT_MAX;
+
+    double sum = 0.0;
+    double squareSum = 0.0;
+
+    size_t zeroCount = 0;
+    size_t nonZeroCount = 0;
+
+    for (float value : host) {
+        minValue = std::min(minValue, value);
+        maxValue = std::max(maxValue, value);
+
+        sum += value;
+        squareSum += static_cast<double>(value) * value;
+
+
+        if (value == 0.0f)
+            zeroCount++;
+
+        else
+            nonZeroCount++;
     }
 
-    std::cerr << ") numel=" << numel() << " bytes=";
 
-    if (dtype_ == DataType::Float32)
-        std::cerr << numel() * sizeof(float);
+    float mean = static_cast<float>(sum / numel());
 
+    float variance = static_cast<float>((squareSum / numel()) - (mean * mean));
+
+    float stdDev = sqrtf(std::max(variance, 0.0f));
+
+    std::sort(host.begin(), host.end());
+
+    float median;
+    if (numel() % 2 == 0)
+        median = (host[numel() / 2 - 1] + host[numel() / 2]) * 0.5f;
+    
     else
-        std::cerr << numel() * sizeof(int);
+        median = host[numel() / 2];
 
 
-    std::cerr << "\n";
+    std::cout << "[Tensor Statistics: " << name << "]\n";
 
-    if (elements == 0)
-        return;
+    std::cout << "Shape: ";
 
+    for (size_t i = 0; i < shape_.size(); i++) {
+        std::cout << shape_[i];
 
-    elements = std::min(elements, numel());
-
-    std::cout << "Values: ";
-
-
-    if (dtype_ == DataType::Float32) {
-        std::vector<float> host(elements);
-
-        copyToHost(host.data(), elements);
-
-
-        for (size_t i = 0; i < elements; i++) {
-            std::cout << host[i];
-
-            if (i + 1 < elements)
-                std::cout << " ";
-        }
-    }
-    else if (dtype_ == DataType::Int32) {
-        std::vector<int> host(elements);
-
-        copyToHost(host.data(), elements);
-
-
-        for (size_t i = 0; i < elements; i++) {
-            std::cout << host[i];
-
-            if (i + 1 < elements)
-                std::cout << " ";
-        }
+        if (i + 1 < shape_.size())
+            std::cout << "x";
     }
 
     std::cout << "\n";
+
+    std::cout << "Elements: " << numel() << "\n";
+
+    std::cout << "Min: " << minValue << "\n";
+
+    std::cout << "Max: " << maxValue << "\n";
+
+    std::cout << "Mean: " << mean << "\n";
+
+    std::cout << "Median: " << median << "\n";
+
+    std::cout << "StdDev: " << stdDev  << "\n";
+
+    std::cout << "Zero: " << zeroCount << " (" << (static_cast<float>(zeroCount) / numel()) * 100.0f << "%)"  << "\n";
+
+    std::cout << "Non Zero: " << nonZeroCount << "\n";
+
+    std::cout << std::endl;
 }

@@ -149,7 +149,7 @@ void Sequential::Train(ExecutionContext& Context, const Tensor& Input, const Ten
     Tensor& Prediction = forwardTraining(Context, Input);
 
 
-    Prediction.debug_print("Prediction", 10);
+    Prediction.debug_statistics_print("Prediction");
 
 
     Loss loss;
@@ -174,7 +174,7 @@ void Sequential::Train(ExecutionContext& Context, const Tensor& Input, const Ten
     );
 
 
-    LossGradient.debug_print("Loss Gradient", 10);
+    LossGradient.debug_statistics_print("Loss Gradient");
 
 
 
@@ -272,7 +272,7 @@ Tensor& Sequential::forwardTraining(ExecutionContext& Context, const Tensor& Inp
                 << i
                 << std::endl;
 
-            Next.debug_print("Activation", 10);
+            Next.debug_statistics_print("Activation");
         }
     }
 
@@ -324,7 +324,7 @@ void Sequential::backpropagation(ExecutionContext& Context, const Tensor& Input,
             << std::endl;
 
 
-        NextGradient.debug_print("Gradient", 10);
+        NextGradient.debug_statistics_print("Gradient");
     }
 }
 

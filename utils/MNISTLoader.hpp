@@ -59,6 +59,7 @@ inline Tensor load_mnist_images(const std::string& path) {
         host[i] = static_cast<float>(pixel) / 255.0f;
     }
 
+
     return Tensor({count, 1, rows, cols }, host.data());
 }
 

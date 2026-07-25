@@ -15,6 +15,9 @@ DenseLayer::DenseLayer(const std::vector<size_t>& inputShape, size_t outNumFeatu
     Weight.allocate({ InFeatures, OutFeatures });
     Bias.allocate({ OutFeatures });
 
+    WeightGrad.allocate({ InFeatures, OutFeatures });
+    BiasGrad.allocate({ OutFeatures });
+
     float limit = sqrtf(6.0f / (InFeatures + OutFeatures));
     uniformDist(Weight.data(), Weight.numel(), 1234ULL, -limit, limit);
 
