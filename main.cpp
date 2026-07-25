@@ -1,7 +1,9 @@
 #include "layer.hpp"
+
 #include "DataLoader.hpp"
 #include "MNISTLoader.hpp"
-#include <LabelLoader.hpp>
+
+
 
 
 int main() {
@@ -27,9 +29,10 @@ int main() {
 
     model.Output("Softmax");
 
+
+
     Tensor Images =
         load_mnist_images(
-            //"Dataset/train-images.idx3-ubyte"
             "D:/PROJECTs/TorchLess/Dataset/train-images.idx3-ubyte"
         );
 
@@ -37,10 +40,9 @@ int main() {
         load_mnist_labels(
             "D:/PROJECTs/TorchLess/Dataset/train-labels.idx1-ubyte"
         );
-    Labels.debug_print("Labels", 10);
 
-    DataLoader imageLoader(Images, 32);
-    LabelLoader labelLoader(Labels, 32);
+    LoadImages imageLoader(Images, 32);
+    LoadLabels labelLoader(Labels, 32);
 
     ExecutionContext ctx;
 
