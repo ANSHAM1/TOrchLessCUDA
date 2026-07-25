@@ -1,4 +1,5 @@
 #include "module.hpp"
+#include "optimizer.hpp"
 
 #include "DataLoader.hpp"
 #include "MNISTLoader.hpp"
@@ -45,11 +46,14 @@ int main() {
     LoadLabels labelLoader(Labels, 32);
 
     ExecutionContext ctx;
+    Adam adam(1e-3f);
 
-    Tensor batch = imageLoader.next();
-    Tensor label = labelLoader.next();
+    while (imageLoader.hasNext() && labelLoader.hasNext()) {
+        Tensor batch = imageLoader.next();
+        Tensor label = labelLoader.next();
 
-    model.Train(ctx, batch, label);
+        model.Train(ctx, adam,  batch, label);
+    }
 
 
  /*   DataLoader loader(Images, 32);

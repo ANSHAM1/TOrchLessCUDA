@@ -1,4 +1,5 @@
 #include "module.hpp"
+#include "optimizer.hpp"
 
 #include <iostream>
 
@@ -142,53 +143,6 @@ Tensor& Sequential::Predict(ExecutionContext& Context, const Tensor& Input) {
 
 
 
-void Sequential::Train(ExecutionContext& Context, const Tensor& Input, const Tensor& Label) {
-    Context.compileTraining(Layers, InputShape);
-
-
-    Tensor& Prediction = forwardTraining(Context, Input);
-
-
-    Prediction.debug_statistics_print("Prediction");
-
-
-    Loss loss;
-
-
-    float LossValue = loss.forward(Prediction, Label);
-
-
-    std::cout << "Loss: "
-        << LossValue
-        << std::endl;
-
-
-
-    Tensor LossGradient(Prediction.shape());
-
-
-    loss.backward(
-        Prediction,
-        Label,
-        LossGradient
-    );
-
-
-    LossGradient.debug_statistics_print("Loss Gradient");
-
-
-
-    backpropagation(
-        Context,
-        Input,
-        LossGradient
-    );
-}
-
-
-//-------------------------------------------------------------------------------------------------------------
-
-
 Tensor& Sequential::forwardInference(ExecutionContext& Context, const Tensor& Input) {
     Tensor* Current = const_cast<Tensor*>(&Input);
 
@@ -231,6 +185,56 @@ Tensor& Sequential::forwardInference(ExecutionContext& Context, const Tensor& In
 
 
 
+//-------------------------------------------------------------------------------------------------------------
+
+
+
+
+void Sequential::Train(
+    ExecutionContext& Context,
+    Optimizer& Optimizer,
+    const Tensor& Input,
+    const Tensor& Label)
+{
+    Context.compileTraining(Layers, InputShape);
+
+    Tensor& Prediction = forwardTraining(Context, Input);
+
+    Loss LossFunction;
+
+    float LossValue =
+        LossFunction.forward(
+            Prediction,
+            Label
+        );
+
+    std::cout << "Loss: "
+        << LossValue
+        << std::endl;
+
+    Tensor LossGradient(Prediction.shape());
+
+    LossFunction.backward(
+        Prediction,
+        Label,
+        LossGradient
+    );
+
+    backpropagation(
+        Context,
+        Input,
+        LossGradient
+    );
+
+    Optimizer.step(
+        parameters(),
+        gradients()
+    );
+}
+
+
+
+
 Tensor& Sequential::forwardTraining(ExecutionContext& Context, const Tensor& Input) {
 
     Context.Activations[0] = Input.view(Input.shape());
@@ -266,14 +270,14 @@ Tensor& Sequential::forwardTraining(ExecutionContext& Context, const Tensor& Inp
         Current = &Next;
 
 
-        if (i < 3)
+   /*     if (i < 3)
         {
             std::cout << "Forward layer: "
                 << i
                 << std::endl;
 
             Next.debug_statistics_print("Activation");
-        }
+        }*/
     }
 
 
@@ -324,7 +328,7 @@ void Sequential::backpropagation(ExecutionContext& Context, const Tensor& Input,
             << std::endl;
 
 
-        NextGradient.debug_statistics_print("Gradient");
+        //NextGradient.debug_statistics_print("Gradient");
     }
 }
 

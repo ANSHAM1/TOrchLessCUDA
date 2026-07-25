@@ -10,6 +10,11 @@
 
 
 
+class Optimizer;
+
+
+
+
 class Layer;
 
 
@@ -292,7 +297,7 @@ public:
 
     Tensor& Predict(ExecutionContext& Context, const Tensor& Input);
 
-    void Train(ExecutionContext& Context, const Tensor& Input, const Tensor& Label);
+    void Train(ExecutionContext& Context, Optimizer& Otm, const Tensor& Input, const Tensor& Label);
 
     
 
@@ -307,6 +312,19 @@ public:
         }
 
         return Params;
+    }
+
+
+    std::vector<Tensor*> gradients() {
+        std::vector<Tensor*> Grads;
+
+        for (auto& Layer : Layers) {
+            auto G = Layer->gradients();
+
+            Grads.insert(Grads.end(), G.begin(), G.end());
+        }
+
+        return Grads;
     }
 
 };

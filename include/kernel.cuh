@@ -10,8 +10,6 @@
 
 void tensorAssign(float* ptr, std::size_t value, std::size_t n);
 
-void tensorAssignRandom(float* data, std::size_t size, unsigned long long seed);
-
 void uniformDist(float* data, size_t size, unsigned long long seed, float min, float max);
 
 
@@ -67,3 +65,19 @@ void outputForward(const Tensor& input, Tensor& output, const std::string& type)
 float SoftmaxCCELoss(const Tensor& logits, const Tensor& target);
 
 void SoftmaxCCELossBackward(const Tensor& prediction, const Tensor& target, Tensor& grad);
+
+
+
+
+// optimizers
+
+void sgdUpdate(Tensor& Parameter, const Tensor& Gradient, float LearningRate);
+
+void momentumUpdate(Tensor& Parameter, const Tensor& Gradient, Tensor& Velocity, float LearningRate, float Beta);
+
+void adagradUpdate(Tensor& Parameter, const Tensor& Gradient, Tensor& Accumulator, float LearningRate, float Epsilon);
+
+void rmsPropUpdate(Tensor& Parameter, const Tensor& Gradient, Tensor& MeanSquare, float LearningRate, float Beta, float Epsilon);
+
+void adamUpdate(Tensor& Parameter, const Tensor& Gradient, Tensor& FirstMoment, Tensor& SecondMoment, float LearningRate,
+    float Beta1, float Beta2, float Epsilon, int TimeStep);

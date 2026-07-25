@@ -31,6 +31,18 @@ add_executable(app
     src/kernels/PoolingKernel.cu 
     src/kernels/DenseKernel.cu 
     src/kernels/OutputKernel.cu
+
+    src/kernels/optimizers/SGD.cu
+    src/kernels/optimizers/Momentum.cu
+    src/kernels/optimizers/AdaGrad.cu
+    src/kernels/optimizers/RMSProp.cu
+    src/kernels/optimizers/Adam.cu
+ 
+    src/optimizers/SGD.cpp
+    src/optimizers/Momentum.cpp
+    src/optimizers/AdaGrad.cpp
+    src/optimizers/RMSProp.cpp
+    src/optimizers/Adam.cpp
 )
 
 target_include_directories(app PRIVATE
