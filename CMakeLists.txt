@@ -20,7 +20,7 @@ add_executable(app
     src/layers/OutputLayer.cpp
 
     src/modules/tensor.cpp 
-    src/modules/sequential.cpp
+    "src/modules/temp.cpp"
     src/modules/execution_ctx.cpp
 
     src/losses/loss.cpp
