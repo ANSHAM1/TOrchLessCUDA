@@ -1,10 +1,10 @@
-# TorchLessCUDA
+## TorchLessCUDA
 
-TorchLessCUDA is a deep learning framework built entirely from scratch using Modern C++20 and CUDA, implementing tensor operations, GPU training, and inference without relying on existing machine learning frameworks.
+#### TorchLessCUDA is a deep learning framework built entirely from scratch using Modern C++20 and CUDA, implementing tensor operations, GPU training, and inference without relying on existing machine learning frameworks.
 
----
+#
 
-#  Overview
+### ◈ Overview
 
 Modern deep learning frameworks abstract away GPU programming, memory management, tensor operations, automatic differentiation, and optimization.
 
@@ -12,11 +12,11 @@ TorchLessCUDA focuses on implementing these components manually while maintainin
 
 The project currently supports training and inference of neural networks entirely on the GPU using custom CUDA kernels.
 
----
+#
 
-#  Features
+### ◈ Features
 
-## Tensor Engine
+#### Tensor Engine
 
 - GPU-resident Tensor abstraction
 - Multi-dimensional tensor support
@@ -27,9 +27,9 @@ The project currently supports training and inference of neural networks entirel
 - Tensor debugging utilities
 - Runtime tensor statistics
 
----
+#
 
-## CUDA Backend
+#### CUDA Backend
 
 - Custom CUDA kernels
 - CUDA runtime API
@@ -39,9 +39,9 @@ The project currently supports training and inference of neural networks entirel
 - Host/device synchronization
 - Modern CUDA C++
 
----
+#
 
-## Neural Network Layers
+#### Neural Network Layers
 
 Currently implemented layers:
 
@@ -59,9 +59,9 @@ Each layer supports:
 - Parameter management
 - Gradient computation
 
----
+#
 
-## Activation Functions
+#### Activation Functions
 
 Implemented activation functions:
 
@@ -70,9 +70,9 @@ Implemented activation functions:
 - Tanh
 - Softmax
 
----
+#
 
-## Loss Functions
+#### Loss Functions
 
 Currently implemented:
 
@@ -83,9 +83,9 @@ Supports:
 - Forward loss computation
 - Gradient computation
 
----
+#
 
-## Optimizers
+#### Optimizers
 
 Implemented optimizers:
 
@@ -97,9 +97,9 @@ Implemented optimizers:
 
 Each optimizer maintains its own internal optimization state.
 
----
+#
 
-## Training Engine
+#### Training Engine
 
 - Automatic forward propagation
 - Automatic backpropagation
@@ -111,18 +111,18 @@ Each optimizer maintains its own internal optimization state.
 - Pre-allocated activation buffers
 - Pre-allocated gradient buffers
 
----
+#
 
-## Inference Engine
+#### Inference Engine
 
 - Optimized inference pipeline
 - Separate inference execution context
 - Ping-pong workspace memory
 - Zero gradient allocation during inference
 
----
+#
 
-## Memory Management
+#### Memory Management
 
 TorchLessCUDA minimizes runtime allocations by compiling execution contexts before training or inference.
 
@@ -134,9 +134,9 @@ Features include:
 - Reduced memory fragmentation
 - Stable memory consumption during training
 
----
+#
 
-## Dataset Support
+#### Dataset Support
 
 Currently supported:
 
@@ -145,9 +145,9 @@ Currently supported:
 - IDX label loader
 - Mini-batch data loading
 
----
+#
 
-## Development Infrastructure
+#### Development Infrastructure
 
 - Modern C++20
 - CUDA 12.x
@@ -157,24 +157,24 @@ Currently supported:
 - Visual Studio support
 - Modular architecture
 
----
+#
 
-# ⚙️ Requirements
+### ◈ ⚙️ Requirements
 
-## Hardware
+#### Hardware
 
 - NVIDIA GPU with CUDA support
 
-## Software
+#### Software
 
 - C++20 compatible compiler
 - NVIDIA CUDA Toolkit 12.x
 - CMake 3.25+
 - Visual Studio 2022 (Windows)
 
----
+#
 
-# Current Status
+### ◈ Current Status
 
 Implemented:
 
@@ -188,9 +188,9 @@ Implemented:
 - Optimizers
 - MNIST training pipeline
 
----
+#
 
-# Current Limitations
+### ◈ Current Limitations
 
 - Only **Cross Entropy Loss (CCE)** is currently implemented.
 - Only the **MNIST dataset** has been tested.
@@ -203,9 +203,9 @@ Implemented:
 - Single GPU only.
 - No distributed training.
 
----
+#
 
-# Future Work
+### ◈ Future Work
 
 Planned improvements include:
 
@@ -219,16 +219,16 @@ Planned improvements include:
 - Additional layer implementations
 - Performance profiling and optimization
 
----
+#
 
-# Motivation
+### ◈ Motivation
 
 TorchLessCUDA was built as a learning project to understand how modern deep learning frameworks operate internally. Rather than relying on existing machine learning libraries, every major component—including tensor management, CUDA execution, forward propagation, backpropagation, and optimization—has been implemented from scratch using Modern C++ and CUDA.
 
 The project emphasizes clean architecture, modular design, and low-level GPU programming while serving as a foundation for experimenting with deep learning systems.
 
----
+#
 
-# License
+### ◈ License
 
 This project is released under the MIT License.
