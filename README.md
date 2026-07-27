@@ -4,6 +4,14 @@
 
 #
 
+### ◈ Project Activity
+
+<p align="center">
+  <img src="https://repobeats.axiom.co/api/embed/c97213ceb03b2f07d4b380f3c7f6ac387b76f71b.svg" alt="Repobeats analytics image" />
+</p>
+
+#
+
 ### ◈ Overview
 
 Modern deep learning frameworks abstract away GPU programming, memory management, tensor operations, automatic differentiation, and optimization.
