@@ -4,54 +4,73 @@
 
 #
 
-### ◈ Project Activity
-
-<p align="center">
-  <img src="https://repobeats.axiom.co/api/embed/c97213ceb03b2f07d4b380f3c7f6ac387b76f71b.svg" alt="Repobeats analytics image" />
-</p>
-
-#
-
 ### ◈ Overview
 
 Modern deep learning frameworks abstract away GPU programming, memory management, tensor operations, automatic differentiation, and optimization.
 
-TorchLessCUDA focuses on implementing these components manually while maintaining a modular and extensible architecture.
+TorchLessCUDA focuses on implementing these components manually while maintaining a modular, extensible, and production-inspired architecture.
 
-The project currently supports training and inference of neural networks entirely on the GPU using custom CUDA kernels.
+The framework supports end-to-end neural network training and inference entirely on the GPU through custom CUDA kernels, providing a deeper understanding of how modern deep learning systems operate internally.
+
+#
+
+### ◈ Architecture
+
+<p align="center">
+    <img src="./assets/Architecture.png" width="100%">
+</p>
+
+#
+
+### ◈ Model Execution Flow
+
+<p align="center">
+    <img src="./assets/CnnFlow.png" width="100%">
+</p>
+
+#
+
+### ◈ Tensor Engine
+
+<p align="center">
+    <img src="./assets/Tensor.png" width="75%">
+</p>
+
+#
+
+### ◈ Inference Pipeline
+
+<p align="center">
+    <img src="./assets/Inference.png" width="100%">
+</p>
+
+#
+
+### ◈ Optimizers
+
+<p align="center">
+    <img src="./assets/Optimizers.png" width="100%">
+</p>
 
 #
 
 ### ◈ Features
 
-#### Tensor Engine
+#### Core Engine
 
 - GPU-resident Tensor abstraction
-- Multi-dimensional tensor support
-- Dynamic tensor reshaping
-- Tensor views (zero-copy)
-- Automatic stride computation
-- CPU ↔ GPU memory transfer
-- Tensor debugging utilities
-- Runtime tensor statistics
+- CUDA-first execution engine
+- Automatic forward propagation
+- Automatic backpropagation
+- Modular neural network architecture
+- Training and inference execution contexts
+- Efficient GPU memory management
+- Workspace reuse
+- Activation & gradient caching
 
 #
 
-#### CUDA Backend
-
-- Custom CUDA kernels
-- CUDA runtime API
-- GPU memory management
-- Ping-pong workspace buffers
-- Efficient memory reuse
-- Host/device synchronization
-- Modern CUDA C++
-
-#
-
-#### Neural Network Layers
-
-Currently implemented layers:
+#### Implemented Layers
 
 - Dense (Fully Connected)
 - Conv2D
@@ -59,19 +78,9 @@ Currently implemented layers:
 - Flatten
 - Activation Layer
 
-Each layer supports:
-
-- Forward propagation
-- Backpropagation
-- Shape inference
-- Parameter management
-- Gradient computation
-
 #
 
 #### Activation Functions
-
-Implemented activation functions:
 
 - ReLU
 - Sigmoid
@@ -82,20 +91,11 @@ Implemented activation functions:
 
 #### Loss Functions
 
-Currently implemented:
-
 - Cross Entropy Loss (CCE)
-
-Supports:
-
-- Forward loss computation
-- Gradient computation
 
 #
 
 #### Optimizers
-
-Implemented optimizers:
 
 - SGD
 - Momentum SGD
@@ -103,55 +103,14 @@ Implemented optimizers:
 - RMSProp
 - Adam
 
-Each optimizer maintains its own internal optimization state.
-
-#
-
-#### Training Engine
-
-- Automatic forward propagation
-- Automatic backpropagation
-- Gradient propagation
-- Parameter updates
-- Mini-batch training
-- Execution context compilation
-- Workspace reuse
-- Pre-allocated activation buffers
-- Pre-allocated gradient buffers
-
-#
-
-#### Inference Engine
-
-- Optimized inference pipeline
-- Separate inference execution context
-- Ping-pong workspace memory
-- Zero gradient allocation during inference
-
-#
-
-#### Memory Management
-
-TorchLessCUDA minimizes runtime allocations by compiling execution contexts before training or inference.
-
-Features include:
-
-- Workspace reuse
-- Activation caching
-- Gradient caching
-- Reduced memory fragmentation
-- Stable memory consumption during training
-
 #
 
 #### Dataset Support
 
-Currently supported:
-
-- MNIST Image Dataset
-- IDX image loader
-- IDX label loader
-- Mini-batch data loading
+- MNIST
+- IDX Image Loader
+- IDX Label Loader
+- Mini-batch Data Loading
 
 #
 
@@ -159,11 +118,10 @@ Currently supported:
 
 - Modern C++20
 - CUDA 12.x
-- CMake build system
+- CMake
+- GitHub Actions
+- Visual Studio 2022
 - Cross-platform project structure
-- GitHub Actions CI
-- Visual Studio support
-- Modular architecture
 
 #
 
@@ -186,13 +144,15 @@ Currently supported:
 
 Implemented:
 
-- Tensor abstraction
+- Tensor engine
 - CUDA backend
+- GPU memory manager
+- Forward propagation
+- Backpropagation
+- Training pipeline
+- Inference pipeline
+- Execution context compilation
 - Neural network layers
-- Automatic forward propagation
-- Automatic backpropagation
-- GPU training
-- GPU inference
 - Optimizers
 - MNIST training pipeline
 
@@ -200,13 +160,13 @@ Implemented:
 
 ### ◈ Current Limitations
 
-- Only **Cross Entropy Loss (CCE)** is currently implemented.
-- Only the **MNIST dataset** has been tested.
+- Only Cross Entropy Loss (CCE) is implemented.
+- Only MNIST has been tested.
 - GPU execution only (no CPU backend).
-- No model serialization (save/load) yet.
+- No model serialization.
 - No Batch Normalization.
-- No Dropout layer.
-- No learning rate schedulers.
+- No Dropout.
+- No learning-rate schedulers.
 - No mixed precision (FP16/BF16).
 - Single GPU only.
 - No distributed training.
@@ -215,25 +175,26 @@ Implemented:
 
 ### ◈ Future Work
 
-Planned improvements include:
-
+- Additional neural network layers
 - Additional loss functions
 - Batch Normalization
 - Dropout
-- Model serialization
-- Learning rate schedulers
+- Learning-rate schedulers
 - Mixed precision training
+- Model serialization
 - Additional datasets
-- Additional layer implementations
-- Performance profiling and optimization
+- Multi-GPU training
+- Performance profiling & optimization
 
 #
 
 ### ◈ Motivation
 
-TorchLessCUDA was built as a learning project to understand how modern deep learning frameworks operate internally. Rather than relying on existing machine learning libraries, every major component—including tensor management, CUDA execution, forward propagation, backpropagation, and optimization—has been implemented from scratch using Modern C++ and CUDA.
+TorchLessCUDA was built as a systems-oriented learning project to understand how deep learning frameworks work beneath high-level APIs.
 
-The project emphasizes clean architecture, modular design, and low-level GPU programming while serving as a foundation for experimenting with deep learning systems.
+Instead of relying on existing ML libraries, the framework implements its own tensor engine, execution pipeline, CUDA kernels, neural network layers, optimization algorithms, and GPU memory management using Modern C++20 and CUDA.
+
+The primary goal is to bridge the gap between deep learning theory and low-level systems implementation while providing a modular foundation for future experimentation and extension.
 
 #
 
