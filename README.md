@@ -30,14 +30,6 @@ The framework supports end-to-end neural network training and inference entirely
 
 #
 
-### ◈ Tensor Engine
-
-<p align="center">
-    <img src="./assets/Tensor.png" width="75%">
-</p>
-
-#
-
 ### ◈ Inference Pipeline
 
 <p align="center">
@@ -54,74 +46,11 @@ The framework supports end-to-end neural network training and inference entirely
 
 #
 
-### ◈ Features
+### ◈ Tensor Engine
 
-#### Core Engine
-
-- GPU-resident Tensor abstraction
-- CUDA-first execution engine
-- Automatic forward propagation
-- Automatic backpropagation
-- Modular neural network architecture
-- Training and inference execution contexts
-- Efficient GPU memory management
-- Workspace reuse
-- Activation & gradient caching
-
-#
-
-#### Implemented Layers
-
-- Dense (Fully Connected)
-- Conv2D
-- Max Pooling
-- Flatten
-- Activation Layer
-
-#
-
-#### Activation Functions
-
-- ReLU
-- Sigmoid
-- Tanh
-- Softmax
-
-#
-
-#### Loss Functions
-
-- Cross Entropy Loss (CCE)
-
-#
-
-#### Optimizers
-
-- SGD
-- Momentum SGD
-- AdaGrad
-- RMSProp
-- Adam
-
-#
-
-#### Dataset Support
-
-- MNIST
-- IDX Image Loader
-- IDX Label Loader
-- Mini-batch Data Loading
-
-#
-
-#### Development Infrastructure
-
-- Modern C++20
-- CUDA 12.x
-- CMake
-- GitHub Actions
-- Visual Studio 2022
-- Cross-platform project structure
+<p align="center">
+    <img src="./assets/Tensor.png" width="75%">
+</p>
 
 #
 
@@ -140,54 +69,6 @@ The framework supports end-to-end neural network training and inference entirely
 
 #
 
-### ◈ Current Status
-
-Implemented:
-
-- Tensor engine
-- CUDA backend
-- GPU memory manager
-- Forward propagation
-- Backpropagation
-- Training pipeline
-- Inference pipeline
-- Execution context compilation
-- Neural network layers
-- Optimizers
-- MNIST training pipeline
-
-#
-
-### ◈ Current Limitations
-
-- Only Cross Entropy Loss (CCE) is implemented.
-- Only MNIST has been tested.
-- GPU execution only (no CPU backend).
-- No model serialization.
-- No Batch Normalization.
-- No Dropout.
-- No learning-rate schedulers.
-- No mixed precision (FP16/BF16).
-- Single GPU only.
-- No distributed training.
-
-#
-
-### ◈ Future Work
-
-- Additional neural network layers
-- Additional loss functions
-- Batch Normalization
-- Dropout
-- Learning-rate schedulers
-- Mixed precision training
-- Model serialization
-- Additional datasets
-- Multi-GPU training
-- Performance profiling & optimization
-
-#
-
 ### ◈ Motivation
 
 TorchLessCUDA was built as a systems-oriented learning project to understand how deep learning frameworks work beneath high-level APIs.
@@ -195,9 +76,3 @@ TorchLessCUDA was built as a systems-oriented learning project to understand how
 Instead of relying on existing ML libraries, the framework implements its own tensor engine, execution pipeline, CUDA kernels, neural network layers, optimization algorithms, and GPU memory management using Modern C++20 and CUDA.
 
 The primary goal is to bridge the gap between deep learning theory and low-level systems implementation while providing a modular foundation for future experimentation and extension.
-
-#
-
-### ◈ License
-
-This project is released under the MIT License.
