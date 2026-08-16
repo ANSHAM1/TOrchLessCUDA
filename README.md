@@ -49,7 +49,7 @@ The framework supports end-to-end neural network training and inference entirely
 ### ◈ Tensor Engine
 
 <p align="center">
-    <img src="./assets/Tensor.png" width="75%">
+    <img src="./assets/Tensor.png" width="100%">
 </p>
 
 #
