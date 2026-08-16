@@ -62,7 +62,7 @@ The framework supports end-to-end neural network training and inference entirely
 
 #### Software
 
-- C++20 compatible compiler
+- C++20 compatible compiler 
 - NVIDIA CUDA Toolkit 12.x
 - CMake 3.25+
 - Visual Studio 2022 (Windows)
